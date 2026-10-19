@@ -17,6 +17,10 @@ If the `argentic` MCP server is connected, these map one to one onto the REST ro
 |---|---|---|
 | `argentic_wake` | message an agent, get its reply | yes |
 | `argentic_fire_due` | wake an agent on plans that have fallen due | yes, if something is due |
+| `argentic_resume` | finish a wake that was cut off or stopped on a cap | yes |
+| `argentic_wakes`, `argentic_wake_get` | find wakes that never answered, read one wake | no |
+| `argentic_journal` | read everything the agent did, in pages | no |
+| `argentic_replay` | check the journal still reproduces what the model was shown | no |
 | `argentic_memory` | read an agent's decisions, facts or plans, with optional text search | no |
 | `argentic_due` | list plans whose wake time has passed | no |
 | `argentic_get_tools`, `argentic_set_tools` | read or replace the tools stored for an agent | no |
@@ -48,10 +52,24 @@ Declare them once with `argentic_set_tools`, or send `tools` with a wake (those 
 
 The loop: wake, read `actions`, do them, wake again with what happened.
 
+## When a call does not answer
+
+Every wake is recorded before it runs. If a wake times out, the connection drops or it stops on a cap:
+
+1. Retry safely by sending the same `idempotency_key` with `argentic_wake`. The retry does not add the message twice, and repeats the stored answer if the wake finished.
+2. Or look: `argentic_wakes` with `state: "open"` lists wakes that are not done (`interrupted` means the process died).
+3. `argentic_resume` continues the latest open wake without adding its message again. It needs the model key again. Anything you send, such as a higher `max_usd`, replaces what the wake had.
+
+What resume does: a tool call that already finished is not run again. A tool call that was cut off is requested again once, so if your side effects matter, de-duplicate on the action's `seq`. A model call that was lost is asked again and charged at its estimate. If another run still holds the agent you get `queued`; a run that died holds it for up to two minutes.
+
+## The journal
+
+`argentic_journal` returns the append-only record of what the agent did, oldest first, in pages. It holds what your messages and your tools' outputs held, so treat it as your own data. `argentic_replay` re-renders each turn's prompt and compares it with the hash recorded when the model was called: `match: true` means the journal still reproduces that prompt byte for byte. It does not re-run the model or call your tools. A downloadable journal file with a SHA-256 hash chain exists as `GET /v1/agents/{agent}/journal/bundle` (not an MCP tool, it can be 4 MB). The chain shows the file was not edited after the fact; it is not signed, so it is not proof to a third party.
+
 ## Scheduled work
 
 Agents do not wake themselves. Wake with `schedule: true` and the agent may make plans with a wake time. You poll `argentic_due`, and for each agent with something due call `argentic_fire_due`. If you do not poll, leave `schedule` off; the agent is then told not to promise reminders.
 
 ## Do not claim
 
-Check https://argentic-labs.vercel.app/docs for the current list. As of this version, there is no streaming, no journal export or replay, and no crash resume. Do not tell the user the platform does those things.
+Check https://argentic-labs.vercel.app/docs for the current list. There is no streaming. Do not say the journal is signed or tamper-proof, and do not say a replay re-ran the model. Say what a call actually returned.

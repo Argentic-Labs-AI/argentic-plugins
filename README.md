@@ -57,6 +57,6 @@ Set up Argentic for me. Read https://argentic-labs.vercel.app/docs/agents and fo
 
 - `argentic` skill: how to build on the API without wasting money or claiming features that do not exist.
 - `argentic-setup` skill: connect, and make a first call for a few cents at most.
-- An MCP server entry with these tools: `argentic_wake`, `argentic_fire_due`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_usage`, `argentic_billing`, `argentic_billing_checkout`, `argentic_approvals`, `argentic_answer_approval`.
+- An MCP server entry with these tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_usage`, `argentic_billing`, `argentic_billing_checkout`, `argentic_approvals`, `argentic_answer_approval`.
 
 MIT licensed.
