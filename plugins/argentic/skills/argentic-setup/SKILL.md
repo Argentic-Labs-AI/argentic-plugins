@@ -7,7 +7,7 @@ description: Use when the user wants to connect to Argentic, the argentic MCP se
 
 ## What you need
 
-1. An Argentic key (starts with `aek_`). Argentic Labs issues these; if the user has none, they ask Argentic Labs for one. Do not invent one.
+1. An Argentic API key (starts with `aek_`). Argentic Labs issues these; if the user has none, they ask Argentic Labs for one. Do not invent one.
 2. For waking agents only: the user's own key for a model provider (OpenRouter, OpenAI, Anthropic, Gemini, DeepSeek, Groq, Together, Fireworks, Mistral, xAI or NVIDIA, or any OpenAI-compatible https endpoint). Reading memory, usage and the other free tools does not need it.
 
 Never ask the user to paste a key into the chat. Point them at the place the key goes and let them put it there.
@@ -23,7 +23,7 @@ The MCP URL is the API address plus `/mcp`.
 
 ## Check it works, cheaply
 
-1. Call `argentic_usage`. It costs nothing and proves the Argentic key. `unauthorized` means the key is wrong or revoked.
+1. Call `argentic_usage`. It costs nothing and proves the Argentic API key. `unauthorized` means the key is wrong or revoked.
 2. Call `argentic_memory` for any agent id. Empty is fine; it proves the agent routes work.
 3. Only then wake: `argentic_wake` with a throwaway agent id like `setup-check`, a short message, the user's model id and prices, and `max_usd` of 0.05. A `model_key_rejected` or `bad_model` answer means the provider refused it and nothing was spent.
 

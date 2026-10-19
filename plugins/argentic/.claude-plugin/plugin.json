@@ -10,8 +10,8 @@
   "userConfig": {
     "api_key": {
       "type": "string",
-      "title": "Argentic key",
-      "description": "Your Argentic tenant key (starts with aek_).",
+      "title": "Argentic API key",
+      "description": "Your Argentic API key (starts with aek_).",
       "required": true,
       "sensitive": true
     },

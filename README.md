@@ -4,7 +4,7 @@ Connect your coding agent to the [Argentic Engine API](https://argentic-labs.ver
 
 This repo holds only manifests, skills and MCP settings. The engine is not in it.
 
-You need an Argentic key (starts with `aek_`, issued by Argentic Labs). To wake an agent you also need your own key for a model provider; Argentic never stores it.
+You need an Argentic API key (starts with `aek_`, issued by Argentic Labs). To wake an agent you also need your own key for a model provider; Argentic never stores it.
 
 ## Claude Code
 
@@ -13,7 +13,7 @@ claude plugin marketplace add organisely/argentic-plugins
 claude plugin install argentic@argentic
 ```
 
-Claude Code asks for your Argentic key and, if you want to wake agents, your model key. They go in secure storage.
+Claude Code asks for your Argentic API key and, if you want to wake agents, your model key. They go in secure storage.
 
 MCP only, no plugin:
 
