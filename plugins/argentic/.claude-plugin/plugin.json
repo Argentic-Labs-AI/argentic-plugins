@@ -1,0 +1,32 @@
+{
+  "name": "argentic",
+  "displayName": "Argentic",
+  "version": "0.1.0",
+  "description": "MCP server and skills for the Argentic Engine API: wake agents with durable memory, read what they remember, declare tools, set spend limits.",
+  "author": { "name": "Argentic Labs", "url": "https://argentic-labs.vercel.app" },
+  "homepage": "https://argentic-labs.vercel.app/docs",
+  "license": "MIT",
+  "keywords": ["agents", "memory", "mcp", "argentic"],
+  "userConfig": {
+    "api_key": {
+      "type": "string",
+      "title": "Argentic key",
+      "description": "Your Argentic tenant key (starts with aek_).",
+      "required": true,
+      "sensitive": true
+    },
+    "model_key": {
+      "type": "string",
+      "title": "Model provider key",
+      "description": "Your own key for the model provider your agents run on (OpenRouter, OpenAI, and so on). Sent with each wake, never stored by Argentic. Needed only for tools that wake an agent.",
+      "required": false,
+      "sensitive": true
+    },
+    "base_url": {
+      "type": "string",
+      "title": "Argentic API URL",
+      "description": "Leave as is unless Argentic Labs gave you another address. No trailing slash.",
+      "default": "https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech"
+    }
+  }
+}

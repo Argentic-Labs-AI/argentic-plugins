@@ -1,0 +1,10 @@
+{
+  "name": "argentic",
+  "version": "0.1.0",
+  "description": "Skills for building on the Argentic Engine API. Add the MCP server separately; see the README.",
+  "author": { "name": "Argentic Labs", "url": "https://argentic-labs.vercel.app" },
+  "homepage": "https://argentic-labs.vercel.app/docs",
+  "license": "MIT",
+  "keywords": ["agents", "memory", "mcp", "argentic"],
+  "skills": "./skills/"
+}

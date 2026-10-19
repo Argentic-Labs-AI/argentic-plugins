@@ -1,0 +1,12 @@
+{
+  "name": "argentic",
+  "description": "Argentic Engine for your coding agent: an MCP server and skills for building on the Argentic Engine API.",
+  "owner": { "name": "Argentic Labs", "url": "https://argentic-labs.vercel.app" },
+  "plugins": [
+    {
+      "name": "argentic",
+      "source": "./plugins/argentic",
+      "description": "MCP server and skills for the Argentic Engine API: wake agents with durable memory, read what they remember, declare tools, set spend limits."
+    }
+  ]
+}
