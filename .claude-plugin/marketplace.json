@@ -6,7 +6,7 @@
     {
       "name": "argentic",
       "source": "./plugins/argentic",
-      "description": "MCP server and skills for the Argentic Engine API: wake agents with durable memory, read what they remember, declare tools, set spend limits."
+      "description": "MCP servers and skills for Argentic: wake agents with durable memory, read what they remember, declare tools, set spend limits, and manage your API keys, usage and budget."
     }
   ]
 }

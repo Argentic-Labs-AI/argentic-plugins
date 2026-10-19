@@ -13,7 +13,7 @@ claude plugin marketplace add organisely/argentic-plugins
 claude plugin install argentic@argentic
 ```
 
-Claude Code asks for your Argentic API key and, if you want to wake agents, your model key. They go in secure storage.
+Claude Code asks for your Argentic API key and, if you want to wake agents, your model key. They go in secure storage. No API key yet? Leave it empty, run `/mcp`, sign in to `argentic-platform`, and ask Claude to create one.
 
 MCP only, no plugin:
 
@@ -22,11 +22,19 @@ claude mcp add --transport http argentic https://br-proud-morning-b7usdmsq-engin
   --header "Authorization: Bearer $ARGENTIC_API_KEY" --header "X-Model-Key: $MODEL_KEY"
 ```
 
+Account tools only (API keys, usage, budget), signed in with your Argentic account:
+
+```
+claude mcp add --transport http argentic-platform https://argentic-labs.vercel.app/mcp
+```
+
 ## claude.ai and Claude Projects
 
-Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `organisely/argentic-plugins`.
+To manage your account from Claude: Customize, Connectors, Add custom connector, URL `https://argentic-labs.vercel.app/mcp`. Sign in and pick the organization Claude may manage. Disconnect it any time in your Argentic settings.
 
-This installs the skills. The MCP tools need a connector with a fixed key, and the Request headers option for that is a beta that not every account has. If you do not see it, use Claude Code or Codex for the tools.
+For the skills: Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `organisely/argentic-plugins`.
+
+This installs the skills. The engine tools need a connector with a fixed key, and the Request headers option for that is a beta that not every account has. If you do not see it, use Claude Code or Codex for the engine tools.
 
 ## Codex
 
@@ -57,6 +65,7 @@ Set up Argentic for me. Read https://argentic-labs.vercel.app/docs/agents and fo
 
 - `argentic` skill: how to build on the API without wasting money or claiming features that do not exist.
 - `argentic-setup` skill: connect, and make a first call for a few cents at most.
-- An MCP server entry with these tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_usage`, `argentic_billing`, `argentic_billing_checkout`, `argentic_approvals`, `argentic_answer_approval`.
+- `argentic-platform` MCP server, signed in with your Argentic account: `get_account`, `list_api_keys`, `create_api_key`, `revoke_api_key`, `get_usage`, `set_budget`. Each works only as far as your role in the organization allows.
+- `argentic` MCP server entry with these tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_usage`, `argentic_billing`, `argentic_billing_checkout`, `argentic_approvals`, `argentic_answer_approval`.
 
 MIT licensed.

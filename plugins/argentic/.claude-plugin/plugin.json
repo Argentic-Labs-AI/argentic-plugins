@@ -1,8 +1,8 @@
 {
   "name": "argentic",
   "displayName": "Argentic",
-  "version": "0.1.0",
-  "description": "MCP server and skills for the Argentic Engine API: wake agents with durable memory, read what they remember, declare tools, set spend limits.",
+  "version": "0.2.0",
+  "description": "MCP servers and skills for Argentic: wake agents with durable memory, read what they remember, declare tools, set spend limits, and manage your account's API keys, usage and budget.",
   "author": { "name": "Argentic Labs", "url": "https://argentic-labs.vercel.app" },
   "homepage": "https://argentic-labs.vercel.app/docs",
   "license": "MIT",
@@ -11,8 +11,8 @@
     "api_key": {
       "type": "string",
       "title": "Argentic API key",
-      "description": "Your Argentic API key (starts with aek_).",
-      "required": true,
+      "description": "Your Argentic API key (starts with aek_). Needed for the engine tools. If you don't have one yet, leave it empty: the argentic-platform tools can create one after you sign in.",
+      "required": false,
       "sensitive": true
     },
     "model_key": {

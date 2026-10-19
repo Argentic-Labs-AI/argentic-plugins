@@ -7,6 +7,10 @@
         "Authorization": "Bearer ${user_config.api_key}",
         "X-Model-Key": "${user_config.model_key}"
       }
+    },
+    "argentic-platform": {
+      "type": "http",
+      "url": "https://argentic-labs.vercel.app/mcp"
     }
   }
 }
