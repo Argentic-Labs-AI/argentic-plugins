@@ -1,10 +1,10 @@
 # Argentic plugins
 
-Connect your coding agent to the [Argentic Engine API](https://argentic-labs.vercel.app/docs): wake agents that keep their memory between calls, read what they remember, give them tools, and cap what they spend.
+Connect your coding agent to [Argentic](https://argentic-labs.vercel.app/docs): wake agents that keep their memory between calls, read what they remember, give them tools, and manage your API keys, usage and budget.
 
 This repo holds only manifests, skills and MCP settings. The engine is not in it.
 
-You need an Argentic API key (starts with `aek_`, issued by Argentic Labs). To wake an agent you also need your own key for a model provider; Argentic never stores it.
+There is one MCP, `https://argentic-labs.vercel.app/mcp`. You sign in with your Argentic account (OAuth) and pick an organization. No API key is needed for the MCP. To wake an agent you also need your own key for a model provider; it travels in the `X-Model-Key` header on each request and Argentic never stores it.
 
 ## Claude Code
 
@@ -13,20 +13,21 @@ claude plugin marketplace add organisely/argentic-plugins
 claude plugin install argentic@argentic
 ```
 
-Claude Code asks for your Argentic API key and, if you want to wake agents, your model key. They go in secure storage.
+Claude Code asks for your model key (optional, only needed to wake agents) and stores it securely. Then run `/mcp` and sign in to `argentic`.
 
 MCP only, no plugin:
 
 ```
-claude mcp add --transport http argentic https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech/mcp \
-  --header "Authorization: Bearer $ARGENTIC_API_KEY" --header "X-Model-Key: $MODEL_KEY"
+claude mcp add --transport http --header "X-Model-Key: $MODEL_KEY" argentic https://argentic-labs.vercel.app/mcp
 ```
+
+Then run `/mcp` to sign in.
 
 ## claude.ai and Claude Projects
 
-Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `organisely/argentic-plugins`.
+Customize, Connectors, Add custom connector, URL `https://argentic-labs.vercel.app/mcp`. Under Request headers add `X-Model-Key` with your model key (only needed to wake agents). Sign in and pick your organization. Disconnect any time in your Argentic settings.
 
-This installs the skills. The MCP tools need a connector with a fixed key, and the Request headers option for that is a beta that not every account has. If you do not see it, use Claude Code or Codex for the tools.
+For the skills: Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `organisely/argentic-plugins`.
 
 ## Codex
 
@@ -34,29 +35,33 @@ This installs the skills. The MCP tools need a connector with a fixed key, and t
 codex plugin marketplace add organisely/argentic-plugins
 ```
 
-That adds the skills. Add the MCP server to `~/.codex/config.toml`:
+That adds the skills. Add the MCP to `~/.codex/config.toml`:
 
 ```
 [mcp_servers.argentic]
-url = "https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech/mcp"
-bearer_token_env_var = "ARGENTIC_API_KEY"
+url = "https://argentic-labs.vercel.app/mcp"
 env_http_headers = { "X-Model-Key" = "MODEL_KEY" }
 ```
 
-Then export `ARGENTIC_API_KEY` and `MODEL_KEY` where Codex starts.
+Export `MODEL_KEY` where Codex starts, then sign in with `codex mcp login argentic`.
+
+## Without the MCP
+
+The HTTP API still works on its own: `POST /v1/agents/{agent}/wake` and the other routes take an API key (`aek_...`, created by the `create_api_key` tool or in the dashboard) as `Authorization: Bearer`, plus `X-Model-Key` to wake. See the [docs](https://argentic-labs.vercel.app/docs).
 
 ## Ask your agent to do it
 
-Paste this into any coding agent:
-
 ```
-Set up Argentic for me. Read https://argentic-labs.vercel.app/docs/agents and follow it for the tool I'm using right now. Don't ask me to paste keys into this chat: tell me where each key goes and let me put it there. When it's connected, call argentic_usage and tell me what it returned.
+Set up Argentic for me. Read https://argentic-labs.vercel.app/docs/agents and follow it for the tool I'm using right now. Don't ask me to paste keys into this chat: tell me where each key goes and let me put it there. When it's connected, call get_account and tell me what it returned.
 ```
 
 ## What is in the plugin
 
 - `argentic` skill: how to build on the API without wasting money or claiming features that do not exist.
 - `argentic-setup` skill: connect, and make a first call for a few cents at most.
-- An MCP server entry with these tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_usage`, `argentic_billing`, `argentic_billing_checkout`, `argentic_approvals`, `argentic_answer_approval`.
+- `argentic` MCP server, signed in with your Argentic account.
+  - Account tools: `get_account`, `list_api_keys`, `create_api_key`, `revoke_api_key`, `get_usage`, `set_budget`.
+  - Agent tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_approvals`, `argentic_answer_approval`.
+  - `argentic_set_tools` and `argentic_answer_approval` need an owner or admin. Other tools work as far as your role allows.
 
 MIT licensed.
