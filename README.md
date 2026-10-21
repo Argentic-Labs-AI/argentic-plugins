@@ -1,14 +1,14 @@
 # Argentic plugins
 
-Connect your coding agent to [Argentic](https://argentic-labs.vercel.app/docs): wake agents that keep their memory between calls, read what they remember, give them tools, and manage your API keys, usage and budget.
+Connect your coding agent to [Argentic](https://getargentic.com/docs): wake agents that keep their memory between calls, read what they remember, give them tools, and manage your API keys, usage and budget.
 
 This repo holds only manifests, skills, MCP settings and small client adapters. The engine is not in it.
 
-There is one MCP, `https://argentic-labs.vercel.app/mcp`. You sign in with your Argentic account (OAuth) and pick an organization. No API key is needed for the MCP. To wake an agent you also need your own key for a model provider; it travels in the `X-Model-Key` header on each request and Argentic never stores it.
+There is one MCP, `https://getargentic.com/mcp`. You sign in with your Argentic account (OAuth) and pick an organization. No API key is needed for the MCP. To wake an agent you also need your own key for a model provider; it travels in the `X-Model-Key` header on each request and Argentic never stores it.
 
 ## Kill it mid-run (2 minutes)
 
-You need an Argentic API key from https://argentic-labs.vercel.app/platform and a model key. The default model is a free NVIDIA one; get its key at https://build.nvidia.com. Node 22 or newer.
+You need an Argentic API key from https://getargentic.com/platform and a model key. The default model is a free NVIDIA one; get its key at https://build.nvidia.com. Node 22 or newer.
 
 ```
 export ARGENTIC_API_KEY=aek_...
@@ -40,14 +40,14 @@ Claude Code asks for your model key (optional, only needed to wake agents) and s
 MCP only, no plugin:
 
 ```
-claude mcp add --transport http --header "X-Model-Key: $MODEL_KEY" argentic https://argentic-labs.vercel.app/mcp
+claude mcp add --transport http --header "X-Model-Key: $MODEL_KEY" argentic https://getargentic.com/mcp
 ```
 
 Then run `/mcp` to sign in.
 
 ## claude.ai and Claude Projects
 
-Customize, Connectors, Add custom connector, URL `https://argentic-labs.vercel.app/mcp`. Under Request headers add `x-api-key` with your model key (only needed to wake agents). Claude only sends header names Anthropic has approved, and `X-Model-Key` is not one, so use `x-api-key`: Argentic reads it as the model key. Request headers is a beta that not every account has yet; if you don't see it, the connector still signs in and reads, and you wake agents from Claude Code or Codex. Sign in and pick your organization. Disconnect any time in your Argentic settings.
+Customize, Connectors, Add custom connector, URL `https://getargentic.com/mcp`. Under Request headers add `x-api-key` with your model key (only needed to wake agents). Claude only sends header names Anthropic has approved, and `X-Model-Key` is not one, so use `x-api-key`: Argentic reads it as the model key. Request headers is a beta that not every account has yet; if you don't see it, the connector still signs in and reads, and you wake agents from Claude Code or Codex. Sign in and pick your organization. Disconnect any time in your Argentic settings.
 
 For the skills: Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `Argentic-Labs-AI/argentic-plugins`.
 
@@ -61,7 +61,7 @@ That adds the skills. Add the MCP to `~/.codex/config.toml`:
 
 ```
 [mcp_servers.argentic]
-url = "https://argentic-labs.vercel.app/mcp"
+url = "https://getargentic.com/mcp"
 env_http_headers = { "X-Model-Key" = "MODEL_KEY" }
 ```
 
@@ -69,7 +69,7 @@ Export `MODEL_KEY` where Codex starts, then sign in with `codex mcp login argent
 
 ## Without the MCP
 
-The HTTP API still works on its own: `POST /v1/agents/{agent}/wake` and the other routes take an API key (`aek_...`, created by the `create_api_key` tool or in the dashboard) as `Authorization: Bearer`, plus `X-Model-Key` to wake. See the [docs](https://argentic-labs.vercel.app/docs).
+The HTTP API still works on its own: `POST /v1/agents/{agent}/wake` and the other routes take an API key (`aek_...`, created by the `create_api_key` tool or in the dashboard) as `Authorization: Bearer`, plus `X-Model-Key` to wake. See the [docs](https://getargentic.com/docs).
 
 ## Bring your own framework
 
@@ -78,7 +78,7 @@ Already have tools written for the Vercel AI SDK, Mastra, LangChain / LangGraph 
 ## Ask your agent to do it
 
 ```
-Set up Argentic for me. Read https://argentic-labs.vercel.app/docs/agents and follow it for the tool I'm using right now. Don't ask me to paste keys into this chat: tell me where each key goes and let me put it there. When it's connected, call get_account and tell me what it returned.
+Set up Argentic for me. Read https://getargentic.com/docs/agents and follow it for the tool I'm using right now. Don't ask me to paste keys into this chat: tell me where each key goes and let me put it there. When it's connected, call get_account and tell me what it returned.
 ```
 
 ## What is in the plugin

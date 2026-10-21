@@ -3,7 +3,7 @@
   "description": "Argentic for your coding agent: one MCP that signs in with your Argentic account.",
   "owner": {
     "name": "Argentic Labs",
-    "url": "https://argentic-labs.vercel.app"
+    "url": "https://getargentic.com"
   },
   "plugins": [
     {

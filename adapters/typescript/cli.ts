@@ -27,7 +27,7 @@ const usage = `Usage: npx @argentic-labs/client demo [--fresh] [--kill-after N]
   --fresh         start a new run (forget the one in ./.argentic-demo/)
   --kill-after N  kill the process yourself after N actions, instead of pressing Ctrl-C
 
-Needs ARGENTIC_API_KEY (from https://argentic-labs.vercel.app/platform) and MODEL_KEY
+Needs ARGENTIC_API_KEY (from https://getargentic.com/platform) and MODEL_KEY
 (your model provider's key; the default model is a free NVIDIA one, key from https://build.nvidia.com).`
 
 /** The side effects land in outbox.jsonl, keyed by the action's stable key, so a repeat is visible and harmless. */
@@ -171,7 +171,7 @@ async function demo(argv: string[]) {
   }
   if (res.status !== 'done') out(yellow(`\nThe run stopped with status ${res.status}. Run the same command again to carry on.`))
 
-  const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://argentic-labs.vercel.app').replace(/\/+$/, '')
+  const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://getargentic.com').replace(/\/+$/, '')
   out()
   out(`See it in the dashboard: ${dash}/platform/ ${dim('->')} Runs ${dim('->')} ${agent}`)
   out(dim('Open the oldest run (the one you killed) and press Check under Proof of what ran.'))

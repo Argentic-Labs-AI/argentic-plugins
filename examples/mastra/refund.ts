@@ -115,7 +115,7 @@ async function main() {
     const verdict = r.mismatched === 0 && r.unverifiable === 0 ? 'all match' : `${r.mismatched} differ, ${r.unverifiable} not checkable`
     console.log(`replay ${wake}: ${r.turns.length} turn${r.turns.length === 1 ? "" : "s"}, ${verdict}`)
   }
-  const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://argentic-labs.vercel.app').replace(/\/+$/, '')
+  const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://getargentic.com').replace(/\/+$/, '')
   console.log(`\nOpen ${dash}/platform -> Runs -> ${agent} to see the run timeline, then open the oldest run and press Check under Proof of what ran.`)
   console.log('\noutbox lines per tool (expect 1 each):')
   for (const [name, n] of Object.entries(outboxCounts(outbox))) console.log(`  ${name}: ${n}`)

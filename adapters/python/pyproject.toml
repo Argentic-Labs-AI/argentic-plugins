@@ -24,8 +24,8 @@ langchain = ["langchain-core>=1.0"]
 openai-agents = ["openai-agents>=0.24"]
 
 [project.urls]
-Homepage = "https://argentic-labs.vercel.app"
-Documentation = "https://argentic-labs.vercel.app/docs"
+Homepage = "https://getargentic.com"
+Documentation = "https://getargentic.com/docs"
 Repository = "https://github.com/Argentic-Labs-AI/argentic-plugins"
 
 [tool.hatch.build.targets.wheel]
