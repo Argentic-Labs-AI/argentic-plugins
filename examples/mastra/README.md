@@ -9,7 +9,7 @@ The agent refunds an order, emails the customer, and closes the ticket. Each too
 Get the code first. The example imports the adapter from `../../adapters`, so clone the whole repo:
 
 ```bash
-git clone https://github.com/argentic-labs-ai/argentic-plugins
+git clone https://github.com/Argentic-Labs-AI/argentic-plugins
 cd argentic-plugins/examples/mastra
 ```
 

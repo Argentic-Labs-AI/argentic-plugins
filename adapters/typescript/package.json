@@ -30,7 +30,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/argentic-labs-ai/argentic-plugins.git",
+    "url": "git+https://github.com/Argentic-Labs-AI/argentic-plugins.git",
     "directory": "adapters/typescript"
   },
   "homepage": "https://argentic-labs.vercel.app/docs",
