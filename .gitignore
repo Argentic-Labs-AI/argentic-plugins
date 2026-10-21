@@ -3,3 +3,6 @@ __pycache__/
 outbox.jsonl
 .argentic-*.json
 node_modules/
+dist/
+*.egg-info/
+.argentic-demo/

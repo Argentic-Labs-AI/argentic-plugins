@@ -128,10 +128,15 @@ jobs:
             echo "$tag already exists; nothing to release"; echo "go=0" >> "$GITHUB_OUTPUT"; exit 0
           fi
           echo "releasing $v"; echo "go=1" >> "$GITHUB_OUTPUT"; echo "make_tag=1" >> "$GITHUB_OUTPUT"
+      - name: Test
+        if: steps.plan.outputs.go == '1'
+        run: python -m unittest discover -s adapters/python/tests
       - if: steps.plan.outputs.go == '1'
-        run: python -m pip install build
+        run: python -m pip install build twine
       - if: steps.plan.outputs.go == '1'
         run: python -m build adapters/python
+      - if: steps.plan.outputs.go == '1'
+        run: python -m twine check --strict adapters/python/dist/*
       - if: steps.plan.outputs.go == '1'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
