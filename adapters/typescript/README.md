@@ -1,6 +1,6 @@
 # Argentic for TypeScript
 
-Argentic runs the agent loop. Your Vercel AI SDK tools and system prompt carry over; the AI SDK's own loop (`generateText`, `Agent`) is not used.
+Argentic runs the agent loop. Your Vercel AI SDK or Mastra tools and system prompt carry over; the framework's own loop (`generateText`, `Agent`, Mastra `Agent.generate`) is not used.
 
 Each tool call the agent makes comes back to your code to carry out. If the process dies mid-run, run it again: it resumes without repeating a finished action, and the run keeps proof of what ran.
 
@@ -10,6 +10,7 @@ Copy the files into your project. No package to install beyond what you already 
 
 - `argentic.ts`: client and `runDurable`, no dependencies, Node 22+.
 - `ai-sdk.ts`: `fromAiSdkTools`, needs `ai` v5 or v6.
+- `mastra.ts`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
 
 ## Use
 
@@ -40,4 +41,6 @@ Keep `agent` and `runId` the same across restarts. `client.replay(agent, wakeId)
 
 Delivery is at-least-once. An action that was running when the process died, before its result reached the local ledger, runs again on resume. Make your handlers safe to repeat: the AI SDK `toolCallId` your `execute` receives is a stable key (`agent:seq`) to dedupe on.
 
-A full walkthrough is in [`examples/ai-sdk`](../../examples/ai-sdk).
+Mastra tools get the same key as `context.agent.toolCallId`.
+
+Full walkthroughs: [`examples/ai-sdk`](../../examples/ai-sdk), [`examples/mastra`](../../examples/mastra).
