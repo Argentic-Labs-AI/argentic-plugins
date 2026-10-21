@@ -1,12 +1,13 @@
 {
   "name": "@argentic-labs/client",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Argentic client for TypeScript: durable agent runs that resume without repeating a finished action. Adapters for the Vercel AI SDK and Mastra.",
   "license": "MIT",
   "type": "module",
   "engines": { "node": ">=22" },
   "files": ["dist", "README.md", "LICENSE"],
   "main": "./dist/argentic.js",
+  "bin": { "argentic": "./dist/cli.js" },
   "types": "./dist/argentic.d.ts",
   "exports": {
     ".": { "types": "./dist/argentic.d.ts", "default": "./dist/argentic.js" },
