@@ -38,8 +38,8 @@ const tools = { refund_order: tool({
   execute: async (args, { toolCallId }) => refund(args, toolCallId),
 }) }
 
-// apiKey defaults to ARGENTIC_API_KEY
-const client = new Argentic({ modelKey: process.env.MODEL_KEY })
+// apiKey defaults to ARGENTIC_API_KEY and modelKey to MODEL_KEY
+const client = new Argentic()
 const out = await runDurable({
   client, agent: 'my-agent', runId: 'order-1182', ledgerPath: '.argentic-ledger.json',
   task: 'Refund order 1182.', system: 'Call one tool per turn.',
@@ -48,7 +48,7 @@ const out = await runDurable({
 console.log(out.reply)
 ```
 
-Keep `agent` and `runId` the same across restarts. `client.replay(agent, wakeId)` re-renders a wake's prompts from the journal and compares them to what the model saw; it calls no model and spends nothing.
+Keep `agent` and `runId` the same across restarts. A request that takes longer than `timeoutMs` (default 300000, 0 for no limit) counts as a network failure and is retried with the same key. If the ledger file is not valid JSON, `runDurable` warns on stderr, sets the file aside as `<path>.corrupt` and starts empty, so finished actions may run again. `client.replay(agent, wakeId)` re-renders a wake's prompts from the journal and compares them to what the model saw; it calls no model and spends nothing.
 
 ## What to know
 
