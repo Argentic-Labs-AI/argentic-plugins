@@ -6,8 +6,6 @@ Each tool call the agent makes comes back to your code to carry out. If the proc
 
 ## Install
 
-Once published (not yet; until then use the copy path below):
-
 ```
 npm i @argentic-labs/client
 ```
@@ -16,7 +14,7 @@ npm i @argentic-labs/client
 - `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5 or v6.
 - `@argentic-labs/client/mastra`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
 
-Not published yet, or you want to vendor it: clone this repo and copy `argentic.ts`, `ai-sdk.ts` and `mastra.ts` into your project (Node 22+, no package needed beyond what you already use).
+To vendor it instead: clone this repo and copy `argentic.ts`, `ai-sdk.ts` and `mastra.ts` into your project (Node 22+, no package needed beyond what you already use).
 
 ## Use
 
