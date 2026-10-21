@@ -1,0 +1,332 @@
+// Argentic core: a small client and a durable tool loop. No dependencies, Node 22+.
+// Argentic runs the agent loop; your code carries out the tool calls it asks for.
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { dirname } from 'node:path'
+
+export const defaultBaseUrl = 'https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech'
+
+export interface ModelSpec {
+  provider: string
+  id: string
+  prices: { in: number; out: number }
+}
+
+/** The free default model. */
+export const freeModel: ModelSpec = {
+  provider: 'nvidia',
+  id: 'nvidia/nemotron-3-super-120b-a12b',
+  prices: { in: 0, out: 0 },
+}
+
+/** What Argentic is told about a tool. It is declared, never executed by Argentic. */
+export interface ToolDecl {
+  name: string
+  description: string
+  parameters: Record<string, unknown>
+}
+
+export interface WakeBody {
+  message: string
+  model: ModelSpec
+  system?: string
+  tools?: ToolDecl[]
+  limits?: { max_usd?: number; max_turns?: number }
+}
+
+export interface Action {
+  id: string
+  tool: string
+  args: Record<string, unknown>
+  seq: number
+}
+
+export type WakeStatus = 'done' | 'spend_cap' | 'budget_cap' | 'turn_cap' | 'error' | 'approval_required'
+
+export interface WakeResult {
+  status: WakeStatus
+  reply: string
+  spent_usd: number
+  turns: number
+  wake_id: string
+  actions?: Action[]
+  resumed?: boolean
+  error?: string
+  /** True when this key was already answered and the stored answer came back. */
+  idempotentReplay: boolean
+}
+
+export interface ReplayTurn {
+  turn_seq: number
+  wake_id: string | null
+  match: boolean | null
+  reason?: string
+}
+
+export interface ReplayResult {
+  turns: ReplayTurn[]
+  matched: number
+  mismatched: number
+  unverifiable: number
+  [key: string]: unknown
+}
+
+export class ArgenticError extends Error {
+  constructor(message: string, readonly status?: number, readonly body?: unknown) {
+    super(message)
+    this.name = 'ArgenticError'
+  }
+}
+
+export interface ClientOptions {
+  apiKey: string
+  /** Sent as X-Model-Key on wake. */
+  modelKey?: string
+  baseUrl?: string
+  fetch?: typeof fetch
+  /** Waits between retries of a 5xx or network failure. */
+  backoffMs?: number[]
+  /** Upper bound on 409 queued retries before giving up. */
+  maxQueuedWaits?: number
+  sleep?: (ms: number) => Promise<void>
+}
+
+const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
+
+export class Argentic {
+  private readonly apiKey: string
+  private readonly modelKey?: string
+  private readonly baseUrl: string
+  private readonly doFetch: typeof fetch
+  private readonly backoffMs: number[]
+  private readonly maxQueuedWaits: number
+  private readonly sleep: (ms: number) => Promise<void>
+
+  constructor(opts: ClientOptions) {
+    this.apiKey = opts.apiKey
+    this.modelKey = opts.modelKey
+    this.baseUrl = (opts.baseUrl ?? process.env.ARGENTIC_BASE_URL ?? defaultBaseUrl).replace(/\/+$/, '')
+    this.doFetch = opts.fetch ?? fetch
+    this.backoffMs = opts.backoffMs ?? [1000, 2000, 4000, 8000]
+    this.maxQueuedWaits = opts.maxQueuedWaits ?? 60
+    this.sleep = opts.sleep ?? wait
+  }
+
+  /**
+   * Wake an agent with a message. Safe to call again with the same key:
+   * a queued (409) answer waits and resends, a 5xx or network error retries
+   * with backoff, and a reused key with a different body throws.
+   */
+  async wake(agent: string, body: WakeBody, idempotencyKey: string): Promise<WakeResult> {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey,
+    }
+    if (this.modelKey) headers['X-Model-Key'] = this.modelKey
+    const res = await this.send(`/v1/agents/${encodeURIComponent(agent)}/wake`, JSON.stringify(body), headers)
+    const json = (await res.json()) as Omit<WakeResult, 'idempotentReplay'>
+    return { ...json, idempotentReplay: res.headers.get('Idempotent-Replay') === 'true' }
+  }
+
+  /** Re-render a wake's prompts from the journal and compare them to what the model was shown. Spends nothing. */
+  async replay(agent: string, wakeId: string): Promise<ReplayResult> {
+    const headers = { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }
+    const res = await this.send(`/v1/agents/${encodeURIComponent(agent)}/replay`, JSON.stringify({ wake: wakeId }), headers)
+    const json = (await res.json()) as Partial<ReplayResult>
+    const turns = json.turns ?? []
+    const count = (pred: (t: ReplayTurn) => boolean) => turns.filter(pred).length
+    return {
+      ...json,
+      turns,
+      matched: json.matched ?? count((t) => t.match === true),
+      mismatched: json.mismatched ?? count((t) => t.match === false),
+      unverifiable: json.unverifiable ?? count((t) => t.match === null),
+    }
+  }
+
+  private async send(path: string, body: string, headers: Record<string, string>): Promise<Response> {
+    let failures = 0
+    let queued = 0
+    for (;;) {
+      let res: Response | undefined
+      let netError: unknown
+      try {
+        res = await this.doFetch(this.baseUrl + path, { method: 'POST', headers, body })
+      } catch (e) {
+        netError = e
+      }
+      if (res && res.ok) return res
+      if (res && res.status === 409) {
+        const info = (await res.json().catch(() => ({}))) as { retry_after?: number }
+        if (++queued > this.maxQueuedWaits) throw new ArgenticError('still queued after waiting', 409, info)
+        await this.sleep(Math.min(Math.max(info.retry_after ?? 1, 0), 5) * 1000)
+        continue
+      }
+      if (res && res.status < 500) {
+        const info = await res.json().catch(() => undefined)
+        const code = (info as { error?: string } | undefined)?.error
+        throw new ArgenticError(`${res.status} ${code ?? res.statusText}`, res.status, info)
+      }
+      // 5xx or network error: same request, same key.
+      if (failures >= this.backoffMs.length) {
+        const what = res ? `HTTP ${res.status}` : String((netError as Error)?.message ?? netError)
+        throw new ArgenticError(`gave up after ${failures + 1} tries: ${what}`, res?.status)
+      }
+      await this.sleep(this.backoffMs[failures++])
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Ledger: what your tools already did, kept in a local JSON file.
+
+export interface LedgerEntry {
+  tool: string
+  args: Record<string, unknown>
+  result: unknown
+  at: string
+}
+
+export class Ledger {
+  private entries: Record<string, LedgerEntry> = {}
+
+  constructor(readonly path: string) {
+    try {
+      this.entries = JSON.parse(readFileSync(path, 'utf8')).entries ?? {}
+    } catch {
+      this.entries = {}
+    }
+  }
+
+  get(key: string): LedgerEntry | undefined {
+    return this.entries[key]
+  }
+
+  /** Write temp file, then rename, so a crash never leaves half a ledger. */
+  set(key: string, entry: LedgerEntry): void {
+    this.entries[key] = entry
+    mkdirSync(dirname(this.path) || '.', { recursive: true })
+    const tmp = `${this.path}.${process.pid}.tmp`
+    writeFileSync(tmp, JSON.stringify({ entries: this.entries }, null, 2))
+    renameSync(tmp, this.path)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// runDurable
+
+export interface ToolContext {
+  seq: number
+  /** `${agent}:${seq}`. Use it to make the side effect safe to repeat. */
+  idempotencyKey: string
+}
+
+export interface DurableTool extends ToolDecl {
+  execute: (args: any, ctx: ToolContext) => unknown | Promise<unknown>
+}
+
+export interface ActionInfo {
+  tool: string
+  seq: number
+  /** Number of actions newly executed in this process so far. */
+  executed: number
+}
+
+export interface RunOptions {
+  client: Argentic
+  agent: string
+  /** Chosen by you and kept the same across restarts. */
+  runId: string
+  task: string
+  system?: string
+  tools: DurableTool[]
+  ledgerPath: string
+  model?: ModelSpec
+  maxSteps?: number
+  limits?: WakeBody['limits']
+  /** Called after each newly executed action is written to the ledger. */
+  onAction?: (info: ActionInfo) => void
+  /** Kill this process hard after the Nth newly executed action (to try a crash). */
+  crashAfterActions?: number
+  log?: (line: string) => void
+}
+
+export interface RunResult {
+  reply: string
+  wakes: string[]
+  steps: number
+  status: WakeStatus | 'max_steps'
+  spentUsd: number
+}
+
+const safeKey = (s: string) => s.replace(/[^A-Za-z0-9\-_.:]/g, '-').slice(0, 128)
+
+export async function runDurable(opts: RunOptions): Promise<RunResult> {
+  const { client, agent, tools } = opts
+  const log = opts.log ?? ((line: string) => console.log(line))
+  const maxSteps = opts.maxSteps ?? 8
+  const model = opts.model ?? freeModel
+  const ledger = new Ledger(opts.ledgerPath)
+  const byName = new Map(tools.map((t) => [t.name, t]))
+  const decls: ToolDecl[] = tools.map(({ name, description, parameters }) => ({ name, description, parameters }))
+
+  const wakes: string[] = []
+  let message = opts.task
+  let reply = ''
+  let spentUsd = 0
+  let status: RunResult['status'] = 'max_steps'
+  let steps = 0
+  let executed = 0
+
+  for (let step = 0; step < maxSteps; step++) {
+    const key = safeKey(`${opts.runId}.${step}`)
+    const body: WakeBody = { message, model, tools: decls }
+    if (opts.system) body.system = opts.system
+    if (opts.limits) body.limits = opts.limits
+
+    const res = await client.wake(agent, body, key)
+    steps = step + 1
+    wakes.push(res.wake_id)
+    reply = res.reply ?? ''
+    spentUsd += res.spent_usd ?? 0
+    status = res.status
+    log(`step ${step}: wake ${res.wake_id} ${res.status}${res.idempotentReplay ? ' (stored answer replayed)' : ''}`)
+
+    const actions = res.actions ?? []
+    const results: { tool: string; seq: number; result: unknown }[] = []
+    for (const action of actions) {
+      const ledgerKey = `${agent}:${action.seq}`
+      const done = ledger.get(ledgerKey)
+      if (done) {
+        log(`skip seq ${action.seq} ${action.tool}: already done before`)
+        results.push({ tool: action.tool, seq: action.seq, result: done.result })
+        continue
+      }
+      const tool = byName.get(action.tool)
+      let result: unknown
+      if (!tool) {
+        result = { error: 'unknown tool' }
+      } else {
+        try {
+          result = await tool.execute(action.args ?? {}, { seq: action.seq, idempotencyKey: ledgerKey })
+        } catch (e) {
+          result = { error: e instanceof Error ? e.message : String(e) }
+        }
+      }
+      ledger.set(ledgerKey, { tool: action.tool, args: action.args ?? {}, result: result ?? null, at: new Date().toISOString() })
+      executed++
+      log(`ran seq ${action.seq} ${action.tool}`)
+      results.push({ tool: action.tool, seq: action.seq, result: ledger.get(ledgerKey)!.result })
+      opts.onAction?.({ tool: action.tool, seq: action.seq, executed })
+      if (opts.crashAfterActions && executed >= opts.crashAfterActions) {
+        log(`simulating a crash after ${executed} action(s)`)
+        process.kill(process.pid, 'SIGKILL')
+      }
+    }
+
+    if (actions.length === 0 || res.status !== 'done') break
+    message = 'Results of the tools you asked for:\n' + JSON.stringify(results)
+  }
+
+  return { reply, wakes, steps, status, spentUsd }
+}

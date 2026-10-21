@@ -2,7 +2,7 @@
 
 Connect your coding agent to [Argentic](https://argentic-labs.vercel.app/docs): wake agents that keep their memory between calls, read what they remember, give them tools, and manage your API keys, usage and budget.
 
-This repo holds only manifests, skills and MCP settings. The engine is not in it.
+This repo holds only manifests, skills, MCP settings and small client adapters. The engine is not in it.
 
 There is one MCP, `https://argentic-labs.vercel.app/mcp`. You sign in with your Argentic account (OAuth) and pick an organization. No API key is needed for the MCP. To wake an agent you also need your own key for a model provider; it travels in the `X-Model-Key` header on each request and Argentic never stores it.
 
@@ -48,6 +48,10 @@ Export `MODEL_KEY` where Codex starts, then sign in with `codex mcp login argent
 ## Without the MCP
 
 The HTTP API still works on its own: `POST /v1/agents/{agent}/wake` and the other routes take an API key (`aek_...`, created by the `create_api_key` tool or in the dashboard) as `Authorization: Bearer`, plus `X-Model-Key` to wake. See the [docs](https://argentic-labs.vercel.app/docs).
+
+## Bring your own framework
+
+Already have tools written for the Vercel AI SDK or LangChain / LangGraph? Hand the loop to Argentic and keep the tools. [`adapters/`](adapters/) has one small file per framework, and [`examples/`](examples/) has a runnable refund agent for each that you kill mid-run and resume without repeating a finished action.
 
 ## Ask your agent to do it
 
