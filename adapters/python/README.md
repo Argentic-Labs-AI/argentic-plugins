@@ -8,7 +8,7 @@ Argentic runs the agent loop (model calls, memory, journal). These files take th
 
 ## Install
 
-Once published (not yet; until then use the copy path below):
+Once it is on PyPI (pending; until then use the copy path below):
 
 ```
 pip install argentic-labs
