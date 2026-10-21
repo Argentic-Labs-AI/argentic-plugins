@@ -6,8 +6,10 @@ Argentic runs your agent's loop. You keep your framework's tool definitions and 
 |---|---|---|
 | [ai-sdk](ai-sdk/) | Vercel AI SDK `tool()` | TypeScript |
 | [langchain](langchain/) | LangChain / LangGraph `@tool` | Python |
+| [openai-agents](openai-agents/) | OpenAI Agents SDK `@function_tool` | Python |
+| [mastra](mastra/) | Mastra `createTool()` | TypeScript |
 
-Both tell the same story: refund an order, email the customer, close the ticket. The first run kills itself right after the refund. The second run skips the refund, finishes the rest and checks each wake against the journal. Then you open the run timeline and press **Verify this run**.
+All four tell the same story: refund an order, email the customer, close the ticket. The first run kills itself right after the refund. The second run skips the refund, finishes the rest and checks each wake against the journal. Then you open the run timeline and press **Verify this run**.
 
 No framework? The core files in [`../adapters`](../adapters/) work on their own: `runDurable` (TypeScript) and `run_durable` (Python) take plain tools with a JSON schema and a handler.
 
