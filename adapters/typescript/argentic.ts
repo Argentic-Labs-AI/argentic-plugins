@@ -5,6 +5,9 @@ import { dirname } from 'node:path'
 
 export const defaultBaseUrl = 'https://api.getargentic.com'
 
+/** A wake can run a long time, so a try waits five minutes, as Python's client does. */
+export const defaultTimeoutMs = 300_000
+
 export interface ModelSpec {
   provider: string
   id: string
@@ -113,9 +116,11 @@ export function hintFor(e: unknown): string | undefined {
 export interface ClientOptions {
   /** Defaults to the ARGENTIC_API_KEY environment variable. */
   apiKey?: string
-  /** Sent as X-Model-Key on wake. */
+  /** Sent as X-Model-Key on wake. Defaults to the MODEL_KEY environment variable. */
   modelKey?: string
   baseUrl?: string
+  /** How long one request may take before that try counts as a network failure, in milliseconds. Default 300000; 0 means no limit. */
+  timeoutMs?: number
   fetch?: typeof fetch
   /** Waits between retries of a 5xx or network failure. */
   backoffMs?: number[]
@@ -130,6 +135,7 @@ export class Argentic {
   private readonly apiKey: string
   private readonly modelKey?: string
   private readonly baseUrl: string
+  private readonly timeoutMs: number
   private readonly doFetch: typeof fetch
   private readonly backoffMs: number[]
   private readonly maxQueuedWaits: number
@@ -137,7 +143,8 @@ export class Argentic {
 
   constructor(opts: ClientOptions = {}) {
     this.apiKey = opts.apiKey ?? process.env.ARGENTIC_API_KEY ?? ''
-    this.modelKey = opts.modelKey
+    this.modelKey = opts.modelKey || process.env.MODEL_KEY || undefined
+    this.timeoutMs = opts.timeoutMs ?? defaultTimeoutMs
     this.baseUrl = (opts.baseUrl ?? process.env.ARGENTIC_BASE_URL ?? defaultBaseUrl).replace(/\/+$/, '')
     this.doFetch = opts.fetch ?? fetch
     this.backoffMs = opts.backoffMs ?? [1000, 2000, 4000, 8000]
@@ -185,7 +192,12 @@ export class Argentic {
       let res: Response | undefined
       let netError: unknown
       try {
-        res = await this.doFetch(this.baseUrl + path, { method: 'POST', headers, body })
+        res = await this.doFetch(this.baseUrl + path, {
+          method: 'POST',
+          headers,
+          body,
+          ...(this.timeoutMs > 0 ? { signal: AbortSignal.timeout(this.timeoutMs) } : {}),
+        })
       } catch (e) {
         netError = e
       }
@@ -229,14 +241,33 @@ export class Ledger {
   private entries: Record<string, LedgerEntry> = {}
   private wakes: Record<string, StoppedWake> = {}
 
-  constructor(readonly path: string) {
+  /**
+   * A missing file starts an empty ledger. A file that cannot be read or parsed is set aside as `<path>.corrupt` and `onCorrupt`
+   * is told, because an empty ledger means finished actions may run again. `onCorrupt` defaults to console.warn.
+   */
+  constructor(readonly path: string, onCorrupt: (message: string) => void = (m) => console.warn(m)) {
+    let text: string
     try {
-      const saved = JSON.parse(readFileSync(path, 'utf8'))
+      text = readFileSync(path, 'utf8')
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return
+      onCorrupt(`argentic: cannot read the ledger ${path} (${(e as Error).message}); starting empty, so finished actions may run again`)
+      return
+    }
+    try {
+      const saved = JSON.parse(text)
+      if (saved === null || typeof saved !== 'object' || Array.isArray(saved)) throw new Error('not a JSON object')
       this.entries = saved.entries ?? {}
       this.wakes = saved.wakes ?? {}
-    } catch {
+    } catch (e) {
       this.entries = {}
       this.wakes = {}
+      let kept = ''
+      try {
+        renameSync(path, `${path}.corrupt`)
+        kept = `, the old file is kept as ${path}.corrupt`
+      } catch {}
+      onCorrupt(`argentic: the ledger ${path} is not valid (${(e as Error).message}); starting empty, so finished actions may run again${kept}`)
     }
   }
 
