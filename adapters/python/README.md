@@ -88,7 +88,7 @@ Hooks on `run_durable`: `on_wake_start(step)` just before each wake is sent, `on
 | `ARGENTIC_BASE_URL` | The API address. Unset, it is `https://api.getargentic.com`. |
 | `ARGENTIC_MODEL_ID`, `ARGENTIC_MODEL_PROVIDER`, `ARGENTIC_PRICE_IN`, `ARGENTIC_PRICE_OUT` | A model other than the free default, read by `model_from_env()`. Prices are dollars per million tokens. With no `ARGENTIC_MODEL_ID` you get `FREE_MODEL`. |
 
-`Argentic(api_key=..., model_key=..., base_url=..., timeout=300)` takes the same things as arguments. A 409 (the agent is mid-run) waits and sends the same request again, and a 5xx or a network failure retries with the same key after 1, 2, 4 and 8 seconds, so a retry never adds a message twice. `backoff=` and `max_queued_waits=` change both. Errors are `ArgenticError` with `.status` (None when no answer came back) and `.body`; `hint_for(error)` returns a next step for the ones a first run tends to hit.
+`Argentic(api_key=..., model_key=..., base_url=..., timeout=300)` takes the same things as arguments. A 409 (the agent is mid-run) waits and sends the same request again, and a 5xx or a network failure retries with the same key after 1, 2, 4 and 8 seconds, so a retry never adds a message twice. `backoff=` and `max_queued_waits=` change both. If the ledger file is not valid JSON, `run_durable` warns on stderr, sets it aside as `<path>.corrupt` and starts empty, so finished actions may run again. Errors are `ArgenticError` with `.status` (None when no answer came back) and `.body`; `hint_for(error)` returns a next step for the ones a first run tends to hit.
 
 ## Honest limits
 

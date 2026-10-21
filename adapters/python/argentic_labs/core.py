@@ -13,6 +13,7 @@ import json
 import os
 import re
 import signal
+import sys
 import tempfile
 import time
 import urllib.error
@@ -303,21 +304,43 @@ class RunResult:
 class Ledger:
     """Results of finished actions, keyed by f"{agent}:{seq}", in a local JSON file saved atomically.
     Also wakes that stopped at their turn or time limit with actions to run. The file has the same shape
-    as the TypeScript client's, so either client can resume a run the other started."""
+    as the TypeScript client's, so either client can resume a run the other started.
 
-    def __init__(self, path: str):
+    A missing file starts an empty ledger. A file that cannot be read or parsed is set aside as `<path>.corrupt` and
+    `on_corrupt` is told (default: a line on stderr), because an empty ledger means finished actions may run again."""
+
+    def __init__(self, path: str, on_corrupt: Callable[[str], None] | None = None):
         self.path = path
         self.entries: dict[str, Any] = {}
         self.wakes: dict[str, Any] = {}
-        if os.path.exists(path):
+        warn = on_corrupt or (lambda m: print(m, file=sys.stderr))
+        try:
             with open(path) as f:
-                saved = json.load(f)
-            if isinstance(saved, dict) and isinstance(saved.get("entries"), dict):
-                self.entries = saved["entries"]
-                self.wakes = saved.get("wakes") or {}
-            elif isinstance(saved, dict):  # a flat file, as this package wrote it before 0.1.4
-                self.wakes = saved.pop("_wakes", None) or {}
-                self.entries = saved
+                text = f.read()
+        except FileNotFoundError:
+            return
+        except OSError as e:
+            warn(f"argentic: cannot read the ledger {path} ({e}); starting empty, so finished actions may run again")
+            return
+        try:
+            saved = json.loads(text)
+            if not isinstance(saved, dict):
+                raise ValueError("not a JSON object")
+        except ValueError as e:
+            kept = ""
+            try:
+                os.replace(path, f"{path}.corrupt")
+                kept = f", the old file is kept as {path}.corrupt"
+            except OSError:
+                pass
+            warn(f"argentic: the ledger {path} is not valid ({e}); starting empty, so finished actions may run again{kept}")
+            return
+        if isinstance(saved.get("entries"), dict):
+            self.entries = saved["entries"]
+            self.wakes = saved.get("wakes") or {}
+        else:  # a flat file, as this package wrote it before 0.1.4
+            self.wakes = saved.pop("_wakes", None) or {}
+            self.entries = saved
 
     def get(self, key: str) -> Any | None:
         return self.entries.get(key)

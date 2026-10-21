@@ -165,6 +165,54 @@ class RunTest(unittest.TestCase):
         self.assertNotIn("r.0", [r[1]["idempotency-key"] for r in self.server.requests][:1])
 
 
+class CorruptLedgerTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.path = os.path.join(self.tmp.name, "ledger.json")
+
+    def test_a_missing_file_starts_empty_without_a_warning(self):
+        warnings = []
+        self.assertIsNone(Ledger(self.path, warnings.append).get("a:1"))
+        self.assertEqual(warnings, [])
+
+    def test_a_corrupt_file_warns_starts_empty_and_is_kept_aside(self):
+        with open(self.path, "w") as f:
+            f.write('{"entries": {"a:1": ')
+        warnings = []
+        ledger = Ledger(self.path, warnings.append)
+        self.assertIsNone(ledger.get("a:1"))
+        self.assertEqual(len(warnings), 1)
+        for word in ("not valid", "finished actions may run again", "ledger.json.corrupt"):
+            self.assertIn(word, warnings[0])
+        with open(self.path + ".corrupt") as f:
+            self.assertEqual(f.read(), '{"entries": {"a:1": ')
+        self.assertFalse(os.path.exists(self.path))
+        ledger.put("a:2", {"tool": "t", "args": {}, "result": 1, "at": "now"})  # and it works again
+        self.assertEqual(Ledger(self.path).get("a:2")["result"], 1)
+
+    def test_json_that_is_not_an_object_is_corrupt_too_and_a_good_file_is_silent(self):
+        warnings = []
+        with open(self.path, "w") as f:
+            f.write("[1, 2]")
+        Ledger(self.path, warnings.append)
+        self.assertEqual(len(warnings), 1)
+        with open(self.path, "w") as f:
+            json.dump({"entries": {"a:1": {"tool": "t", "args": {}, "result": 5, "at": "x"}}}, f)
+        self.assertEqual(Ledger(self.path, warnings.append).get("a:1")["result"], 5)
+        self.assertEqual(len(warnings), 1)
+
+    def test_the_default_warning_goes_to_stderr(self):
+        import contextlib
+        import io
+        with open(self.path, "w") as f:
+            f.write("nope")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            Ledger(self.path)
+        self.assertIn("argentic: the ledger", err.getvalue())
+
+
 class ModelFromEnvTest(unittest.TestCase):
     def test_unset_is_the_free_model_whatever_else_is_set(self):
         self.assertEqual(model_from_env({}), FREE_MODEL)
