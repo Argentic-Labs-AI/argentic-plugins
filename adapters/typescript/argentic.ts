@@ -300,12 +300,12 @@ export interface RunOptions {
   model?: ModelSpec
   maxSteps?: number
   limits?: WakeBody['limits']
+  /** Called just before each wake is sent, so a caller can say it is waiting on the model (the first answer can take several seconds). */
+  onWakeStart?: (info: { step: number }) => void
   /** Called after each newly executed action is written to the ledger. */
   onAction?: (info: ActionInfo) => void
   /** Called for an action the ledger says already finished, so it is not run again. */
   onSkip?: (info: { tool: string; seq: number }) => void
-  /** Called just before each wake is sent, so a caller can say it is waiting on the model (the first answer can take several seconds). */
-  onWakeStart?: (info: { step: number }) => void
   /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key, or the ledger kept a stopped one. */
   onWake?: (info: { step: number; wakeId: string; status: WakeStatus; replayed: boolean }) => void
   /** Kill this process hard after the Nth newly executed action (to try a crash). */
@@ -353,12 +353,12 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
   for (let step = 0; step < maxSteps; step++) {
     const key = safeKey(`${opts.runId}.${step}`)
     const body: WakeBody = { message, model, tools: decls }
+    opts.onWakeStart?.({ step })
     if (opts.system) body.system = opts.system
     if (opts.limits) body.limits = opts.limits
 
     // A stopped wake kept in the ledger is not asked again: its actions get their results under the next key.
     const kept = ledger.getWake(key)
-    opts.onWakeStart?.({ step })
     const res: WakeResult = kept ? { ...kept, idempotentReplay: true } : await client.wake(agent, body, key)
     if (!kept && carriesOn(res.status) && res.actions?.length) {
       const { idempotentReplay: _, ...answer } = res
