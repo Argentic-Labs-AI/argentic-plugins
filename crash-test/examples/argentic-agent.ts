@@ -73,7 +73,7 @@ const model: ModelSpec = e.ARGENTIC_MODEL_ID
   : freeModel
 
 const out = await runDurable({
-  client: new Argentic({ apiKey, modelKey }),
+  client: new Argentic({ apiKey, modelKey, baseUrl: process.env.CRASHTEST_UPSTREAM_ARGENTIC_URL }),
   agent,
   runId,
   task,

@@ -2,7 +2,7 @@
 
 Kill your agent at each tool call, restart it, and see which side effects happened twice.
 
-It works on any agent in any language, with or without Argentic. It runs your command, points your tools at local sinks (HTTP, a Stripe-shaped payments API, SMTP), and kills the process at every call a sink sees. It only watches what arrives. It never looks inside your agent.
+It works on any agent in any language, with or without Argentic. It runs your command, points your tools at local sinks (HTTP, a Stripe-shaped payments API, SMTP, files, SQLite rows), and kills the process at every effect a sink sees and between a model reply and the tool call that follows it. It only watches what arrives. It never looks inside your agent.
 
 Prototype. Node 20 or newer, no dependencies.
 
@@ -41,7 +41,10 @@ Anything after `--` is your agent's command. Your agent gets these environment v
 |---|---|
 | `CRASHTEST_SINK_URL` | HTTP sink. Answers `200 {"ok":true}`. Paths under `/v1/` behave like a payments API. |
 | `CRASHTEST_SMTP_URL`, `CRASHTEST_SMTP_HOST`, `CRASHTEST_SMTP_PORT` | SMTP sink. Accepts any mail. |
+| `CRASHTEST_FILES_DIR` | A folder for effect logs. Every complete line appended to a file in it is one effect. A line that is JSON with a `key` or `idempotency_key` field carries that key. Checkpoints belong in the state folder, not here. |
+| `CRASHTEST_DB_PATH` | A SQLite file (Node 22.13 or newer). Every row inserted into any table is one effect; a column named `idempotency_key` or `key` is its key. Use `INSERT OR IGNORE` against a unique key and the second copy never exists. |
 | `CRASHTEST_STATE_DIR` | A folder that survives the kill, for agents that keep checkpoints. |
+| `CRASHTEST_UPSTREAM_<NAME>_URL` | A pass-through to a service you name with `--upstream name=url`, such as a model API. See below. |
 
 The tool does this:
 
@@ -50,7 +53,19 @@ The tool does this:
 3. Restarts the same command.
 4. Compares what landed against the clean run.
 
+For files and rows the tool sees the effect just after it happens, so `mid` and `done` are the same kill there. `pause` still works: the agent is frozen right after its write.
+
 A repeat of an `Idempotency-Key` the sink has already seen counts as one effect, because a receiver that honours the key would absorb it. The `/v1/` paths do exactly that, the way a payments API does, and refuse a reused key with a different body. Use `--no-dedupe` to count repeats as second effects.
+
+## Kills between a model reply and its tool call
+
+Give the tool the model API with `--upstream`, and have your agent send its model calls to `$CRASHTEST_UPSTREAM_MODEL_URL` instead of the provider (the name you chose, in capitals):
+
+```
+MODEL_KEY=... node crash-test.mjs --upstream model=https://integrate.api.nvidia.com/v1 --upstream-rpm 10 -- node examples/llm-agent.mjs
+```
+
+The tool forwards each call untouched, counts it, and adds two kill points per call: `after reply` (the reply reaches the agent, then SIGKILL, so the tool call it asked for never happens) and `reply lost` (the provider answered, the agent never heard). Upstream calls are not effects and are not counted as duplicates. `--upstream-rpm` caps requests per minute across the whole run, which matters on a shared free key. Replies are buffered, so streaming responses do not pass. Any HTTP service works, not only models: point an agent that talks to an orchestration API at it the same way.
 
 ## What it reports
 
@@ -86,15 +101,19 @@ An LLM agent may make different calls on each run. Three options handle that:
 | `payments-agent.mjs` | Refunds through the Stripe-shaped API. `PAY_KEYED=1` sends the key. |
 | `mail-agent.mjs` | Sends mail over SMTP. `SMTP_KEYED=1` sets a stable key header. |
 | `wandering-agent.mjs` | A stand-in for an LLM agent that varies its route. `WANDER_KEYED=1` makes it careful. |
+| `file-agent.mjs` | The effect is a line in an outbox file. `FILE_KEYED=1` adds a key. Use `--intent tool`. |
+| `db-agent.mjs` | The effect is a SQLite row. `DB_KEYED=1` makes the database refuse the second copy. Run with `node --no-warnings`. |
+| `llm-agent.mjs` | A real tool-calling loop against an OpenAI-compatible API. `LLM_KEYED=1` makes it careful. Use `--upstream`. |
 | `lossy-agent.mjs` | Assumes the earlier run finished. Reports lost actions. |
 | `argentic-agent.ts` | The Argentic quickstart agent. Needs `ARGENTIC_API_KEY`, `MODEL_KEY`, and `node --experimental-transform-types`. |
 
-`node test/self-test.mjs` runs thirteen of these cases and checks that the verdict follows the agent.
+`node test/self-test.mjs` runs nineteen cases (no keys needed; it uses a scripted model) and checks that the verdict follows the agent.
 
 ## Limits
 
-- It sees what arrives at the HTTP and SMTP sinks. A file write or a database row is not seen.
+- Files are read as append-only logs (a rewritten file counts as new lines), and rows are insert-only. An update or delete is not seen.
+- Other databases are not supported yet. SQLite only.
 - Kill points follow the sink's call order. An agent that fires calls in parallel can reach the same point in a different order on another run.
-- It kills at calls. It does not kill between a model call and the next tool call.
-- It has not been run against a live model yet. The agents here use fixed plans or a scripted model.
+- Between a model reply and a tool call it can only kill at calls that go through `--upstream`. A model called from inside another service (the way Argentic's engine calls one) is reached only at the call your agent makes to that service.
+- Live-model results are in the results page draft. The rest of the examples use fixed plans or a scripted model.
 - If your agent keeps state in its working directory, use `--copy-cwd` so trials do not share it.
