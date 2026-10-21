@@ -11,7 +11,7 @@ from typing import Any, Iterable
 from agents import FunctionTool
 from agents.tool_context import ToolContext as SdkToolContext
 
-from argentic import Tool
+from .core import Tool
 
 
 def from_openai_agents_tools(tools: Iterable[Any]) -> list[Tool]:

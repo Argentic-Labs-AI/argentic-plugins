@@ -6,19 +6,25 @@ Each tool call the agent makes comes back to your code to carry out. If the proc
 
 ## Install
 
-Copy the files into your project. No package to install beyond what you already use.
+Once published (not yet; until then use the copy path below):
 
-- `argentic.ts`: client and `runDurable`, no dependencies, Node 22+.
-- `ai-sdk.ts`: `fromAiSdkTools`, needs `ai` v5 or v6.
-- `mastra.ts`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
+```
+npm i @argentic-labs/client
+```
+
+- `@argentic-labs/client`: the client and `runDurable`, no dependencies, Node 22+.
+- `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5 or v6.
+- `@argentic-labs/client/mastra`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
+
+Not published yet, or you want to vendor it: clone this repo and copy `argentic.ts`, `ai-sdk.ts` and `mastra.ts` into your project (Node 22+, no package needed beyond what you already use).
 
 ## Use
 
 ```ts
 import { tool } from 'ai'
 import { z } from 'zod'
-import { Argentic, runDurable } from './argentic.ts'
-import { fromAiSdkTools } from './ai-sdk.ts'
+import { Argentic, runDurable } from '@argentic-labs/client'
+import { fromAiSdkTools } from '@argentic-labs/client/ai-sdk'
 
 const tools = { refund_order: tool({
   description: 'Refund an order.',

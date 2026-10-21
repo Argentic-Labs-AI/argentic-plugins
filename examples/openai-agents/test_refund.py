@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import refund  # noqa: E402
-from argentic import Argentic, ArgenticError  # noqa: E402
+from argentic_labs import Argentic, ArgenticError  # noqa: E402
 
 SCRIPT = [
     ("refund_order", {"order_id": "1182", "amount_usd": 42}),
