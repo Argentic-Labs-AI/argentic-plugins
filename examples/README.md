@@ -12,6 +12,8 @@ Argentic runs your agent's loop. You keep your framework's tool definitions and 
 
 All five tell the same story: refund an order, email the customer, close the ticket. The first run kills itself right after the refund. The second run skips the refund, finishes the rest and checks each wake against the journal. Then you open the run timeline in the dashboard and press **Check** under **Proof of what ran**.
 
+Want a web app instead of a script? [templates/support-agent](../templates/support-agent/) is a deployable Next.js support agent on the AI SDK with a Kill button, a sandbox inbox and a proof check.
+
 Just want to see it? `npx @argentic-labs/client demo` runs the same story with nothing to clone (see the [repo README](../README.md#kill-it-mid-run-2-minutes)). No framework? Start with [core](core/). The core files in [`../adapters`](../adapters/) work on their own: `runDurable` (TypeScript) and `run_durable` (Python) take plain tools with a JSON schema and a handler.
 
 You need an Argentic API key from https://getargentic.com/platform and a model key. The default model is a free NVIDIA NIM model (get a key at https://build.nvidia.com); set `ARGENTIC_MODEL_PROVIDER`, `ARGENTIC_MODEL_ID`, `ARGENTIC_PRICE_IN` and `ARGENTIC_PRICE_OUT` to use another.
