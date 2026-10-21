@@ -16,7 +16,7 @@ Never ask the user to paste a key into the chat. Point them at the place the key
 
 The one MCP is `https://argentic-labs.vercel.app/mcp`.
 
-- Claude Code plugin: `claude plugin marketplace add organisely/argentic-plugins`, then `claude plugin install argentic@argentic`. Claude Code asks for the optional model key. Then `/mcp` and sign in to `argentic`.
+- Claude Code plugin: `claude plugin marketplace add Argentic-Labs-AI/argentic-plugins`, then `claude plugin install argentic@argentic`. Claude Code asks for the optional model key. Then `/mcp` and sign in to `argentic`.
 - Claude Code, MCP only: `claude mcp add --transport http --header "X-Model-Key: $MODEL_KEY" argentic https://argentic-labs.vercel.app/mcp` with `MODEL_KEY` set in the shell first, then `/mcp` to sign in.
 - claude.ai: Customize, Connectors, Add custom connector, the URL above. Under Request headers add `x-api-key` with the model key (only needed to wake agents; Claude does not send `X-Model-Key`, and Argentic reads `x-api-key` as the model key). If there is no Request headers section, that account cannot wake agents from claude.ai: use Claude Code or Codex. Sign in and pick the organization.
 - Codex: in `~/.codex/config.toml`, a `[mcp_servers.argentic]` table with the `url` above and `env_http_headers = { "X-Model-Key" = "MODEL_KEY" }`, with `MODEL_KEY` exported. Sign in with `codex mcp login argentic`.
