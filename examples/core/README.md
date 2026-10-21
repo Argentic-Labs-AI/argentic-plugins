@@ -55,6 +55,17 @@ cd argentic-plugins/examples/core
 
 Use `npm start -- --fresh` to start over with a new agent.
 
+## The same demo in Python
+
+[`refund.py`](refund.py) is the Python version, with the same three tools, the same outbox and the same replay and proof steps. It needs only Python 3.10+ and the same two keys; it imports the client from `../../adapters/python`, so there is nothing to install.
+
+```bash
+ARGENTIC_CRASH_AFTER=1 python3 refund.py   # dies after the refund
+python3 refund.py                          # skips it and finishes
+```
+
+fish: `env ARGENTIC_CRASH_AFTER=1 python3 refund.py`. `python3 -m unittest -v` runs its offline test.
+
 ## Your own tools
 
 ```ts
