@@ -51,7 +51,7 @@ The HTTP API still works on its own: `POST /v1/agents/{agent}/wake` and the othe
 
 ## Bring your own framework
 
-Already have tools written for the Vercel AI SDK, Mastra, LangChain / LangGraph or the OpenAI Agents SDK? Hand the loop to Argentic and keep the tools. [`adapters/`](adapters/) has one small file per framework, and [`examples/`](examples/) has a runnable refund agent for each that you kill mid-run and resume without repeating a finished action.
+Already have tools written for the Vercel AI SDK, Mastra, LangChain / LangGraph or the OpenAI Agents SDK? Hand the loop to Argentic and keep the tools. [`adapters/`](adapters/) has one small file per framework, and [`examples/`](examples/) has a runnable refund agent for each, plus one with no framework at all. Kill it mid-run and it resumes without repeating a finished action.
 
 ## Ask your agent to do it
 

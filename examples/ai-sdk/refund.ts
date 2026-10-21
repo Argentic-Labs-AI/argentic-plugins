@@ -4,7 +4,7 @@ import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 
 import { pathToFileURL } from 'node:url'
 import { tool } from 'ai'
 import { z } from 'zod'
-import { Argentic, freeModel, runDurable, type ModelSpec } from '../../adapters/typescript/argentic.ts'
+import { Argentic, freeModel, hintFor, runDurable, type ModelSpec } from '../../adapters/typescript/argentic.ts'
 import { fromAiSdkTools } from '../../adapters/typescript/ai-sdk.ts'
 
 export const system =
@@ -110,9 +110,16 @@ async function main() {
     console.log(`replay ${wake}: ${r.turns.length} turn${r.turns.length === 1 ? "" : "s"}, ${verdict}`)
   }
   const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://argentic-labs.vercel.app').replace(/\/+$/, '')
-  console.log(`\nOpen ${dash}/platform -> Runs -> ${agent} to see the run timeline, then press Verify this run.`)
+  console.log(`\nOpen ${dash}/platform -> Runs -> ${agent} to see the run timeline, then open the oldest run and press Check under Proof of what ran.`)
   console.log('\noutbox lines per tool (expect 1 each):')
   for (const [name, n] of Object.entries(outboxCounts(outbox))) console.log(`  ${name}: ${n}`)
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) await main()
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main().catch((e: unknown) => {
+    const hint = hintFor(e)
+    if (!hint) throw e
+    console.error(`\n${e instanceof Error ? e.message : String(e)}\n${hint}`)
+    process.exit(1)
+  })
+}

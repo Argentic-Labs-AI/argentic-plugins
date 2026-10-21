@@ -6,6 +6,13 @@ The agent refunds an order, emails the customer, and closes the ticket. Each too
 
 ## Quickstart (under 10 minutes)
 
+Get the code first. The example imports the adapter from `../../adapters`, so clone the whole repo:
+
+```bash
+git clone https://github.com/Organisely/argentic-plugins
+cd argentic-plugins/examples/mastra
+```
+
 1. Get an Argentic API key at https://argentic-labs.vercel.app/platform
 2. Get a free NVIDIA NIM key at https://build.nvidia.com
 3. Export both (bash or zsh):
@@ -42,9 +49,9 @@ The agent refunds an order, emails the customer, and closes the ticket. Each too
    npm start
    ```
 
-   You will see a line like `skip seq 1 refund_order: already done before`, then the email and ticket steps, then a one-line summary. The script also replays each wake and prints the outbox counts: one line per tool.
+   You will see a line like `skip seq 7 refund_order: already done before` (your number may differ), then the email and ticket steps, then a one-line summary. The script also replays each wake and prints the outbox counts: one line per tool.
 
-7. Open https://argentic-labs.vercel.app/platform, go to Runs, pick your agent (printed as `refund-demo-xxxxxx`), and press **Verify this run**.
+7. Open https://argentic-labs.vercel.app/platform, go to **Runs**, pick your agent (printed as `refund-demo-xxxxxx`) and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
 
 Use `npm start -- --fresh` to start over with a new agent.
 
