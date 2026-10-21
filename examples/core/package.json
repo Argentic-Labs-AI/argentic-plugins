@@ -5,7 +5,7 @@
   "description": "Argentic runs the loop; plain tools with a JSON schema, no framework.",
   "scripts": {
     "start": "tsx refund.ts",
-    "test": "node --import tsx --test refund.test.ts",
+    "test": "node --import tsx --test refund.test.ts turn-cap.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
