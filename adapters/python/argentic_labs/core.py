@@ -17,7 +17,7 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-DEFAULT_BASE_URL = "https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech"
+DEFAULT_BASE_URL = "https://api.getargentic.com"
 BACKOFF = (1, 2, 4, 8)  # waits between the 5 tries on 5xx or network errors
 
 
@@ -42,7 +42,7 @@ def hint_for(e: BaseException) -> str | None:
     if code == "bad_model":
         return "Your provider does not know this model id. Set ARGENTIC_MODEL_ID to one it serves, or unset it for the free default."
     if e.status == 402:
-        return "This account has no balance left for wakes. See the Billing page in the dashboard."
+        return "This account hit its usage limit. Argentic is free in beta, so there is nothing to buy: email hi@getargentic.com and we will raise it."
     if e.status == 429:
         return "Too many requests a minute for this key. Wait for the time in the error and run the same command again."
     if e.status is None or e.status >= 500:

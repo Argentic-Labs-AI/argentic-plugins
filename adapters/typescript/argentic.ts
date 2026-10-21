@@ -3,7 +3,7 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-export const defaultBaseUrl = 'https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech'
+export const defaultBaseUrl = 'https://api.getargentic.com'
 
 export interface ModelSpec {
   provider: string
@@ -104,14 +104,15 @@ export function hintFor(e: unknown): string | undefined {
   if (e.status === 401) return 'Check ARGENTIC_API_KEY. A key only works on the API it was made for, so if you set ARGENTIC_BASE_URL, make the key in that dashboard.'
   if (code === 'model_key_rejected') return 'Your model provider refused MODEL_KEY. Check it is a key for the provider in the error (a free NVIDIA key starts with nvapi-).'
   if (code === 'bad_model') return 'Your provider does not know this model id. Set ARGENTIC_MODEL_ID to one it serves, or unset it for the free default.'
-  if (e.status === 402) return 'This account has no balance left for wakes. See the Billing page in the dashboard.'
+  if (e.status === 402) return 'This account hit its usage limit. Argentic is free in beta, so there is nothing to buy: email hi@getargentic.com and we will raise it.'
   if (e.status === 429) return 'Too many requests a minute for this key. Wait for the time in the error and run the same command again.'
   if (e.status === undefined || e.status >= 500) return 'The API did not answer. Run the same command again in a minute: it picks up where it stopped.'
   return undefined
 }
 
 export interface ClientOptions {
-  apiKey: string
+  /** Defaults to the ARGENTIC_API_KEY environment variable. */
+  apiKey?: string
   /** Sent as X-Model-Key on wake. */
   modelKey?: string
   baseUrl?: string
@@ -134,8 +135,8 @@ export class Argentic {
   private readonly maxQueuedWaits: number
   private readonly sleep: (ms: number) => Promise<void>
 
-  constructor(opts: ClientOptions) {
-    this.apiKey = opts.apiKey
+  constructor(opts: ClientOptions = {}) {
+    this.apiKey = opts.apiKey ?? process.env.ARGENTIC_API_KEY ?? ''
     this.modelKey = opts.modelKey
     this.baseUrl = (opts.baseUrl ?? process.env.ARGENTIC_BASE_URL ?? defaultBaseUrl).replace(/\/+$/, '')
     this.doFetch = opts.fetch ?? fetch
@@ -299,6 +300,8 @@ export interface RunOptions {
   model?: ModelSpec
   maxSteps?: number
   limits?: WakeBody['limits']
+  /** Called just before each wake is sent, so a caller can say it is waiting on the model (the first answer can take several seconds). */
+  onWakeStart?: (info: { step: number }) => void
   /** Called after each newly executed action is written to the ledger. */
   onAction?: (info: ActionInfo) => void
   /** Called for an action the ledger says already finished, so it is not run again. */
@@ -350,6 +353,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
   for (let step = 0; step < maxSteps; step++) {
     const key = safeKey(`${opts.runId}.${step}`)
     const body: WakeBody = { message, model, tools: decls }
+    opts.onWakeStart?.({ step })
     if (opts.system) body.system = opts.system
     if (opts.limits) body.limits = opts.limits
 
