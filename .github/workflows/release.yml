@@ -1,0 +1,58 @@
+# Release only. Runs when a version tag is pushed: npm-v0.1.0 publishes the
+# TypeScript package, py-v0.1.0 publishes the Python package. No tokens: npm and
+# PyPI both trust this workflow by its repository, file name and environment.
+# If the GitHub org or repo is renamed, update the trusted publisher entries on
+# npmjs.com and pypi.org to match (see release/package-publishing.md).
+name: release
+
+on:
+  push:
+    tags:
+      - 'npm-v*'
+      - 'py-v*'
+
+jobs:
+  npm:
+    if: startsWith(github.ref_name, 'npm-v')
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: adapters/typescript
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Tag must match package.json version
+        run: test "npm-v$(node -p "require('./package.json').version")" = "${GITHUB_REF_NAME}"
+      - run: npm ci
+      - run: npm run build
+      - run: npm pack --dry-run
+      - run: npm publish --access public --provenance
+
+  pypi:
+    if: startsWith(github.ref_name, 'py-v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tag must match pyproject version
+        run: |
+          v=$(python -c "import tomllib;print(tomllib.load(open('adapters/python/pyproject.toml','rb'))['project']['version'])")
+          test "py-v$v" = "${GITHUB_REF_NAME}"
+      - run: python -m pip install build
+      - run: python -m build adapters/python
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: adapters/python/dist/

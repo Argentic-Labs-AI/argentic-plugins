@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "argentic-labs"
+version = "0.1.0"
+description = "Argentic client for Python: durable agent runs that resume without repeating a finished action. Adapters for LangChain / LangGraph and the OpenAI Agents SDK."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "Argentic Labs" }]
+keywords = ["agents", "durable", "langchain", "langgraph", "openai-agents", "argentic"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+langchain = ["langchain-core>=1.0"]
+openai-agents = ["openai-agents>=0.24"]
+
+[project.urls]
+Homepage = "https://argentic-labs.vercel.app"
+Documentation = "https://argentic-labs.vercel.app/docs"
+Repository = "https://github.com/Organisely/argentic-plugins"
+
+[tool.hatch.build.targets.wheel]
+packages = ["argentic_labs"]
+
+[tool.hatch.build.targets.sdist]
+include = ["argentic_labs", "README.md", "LICENSE", "pyproject.toml"]

@@ -10,7 +10,7 @@ from typing import Any, Iterable
 
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-from argentic import Tool
+from .core import Tool
 
 
 def from_langchain_tools(tools: Iterable[Any]) -> list[Tool]:

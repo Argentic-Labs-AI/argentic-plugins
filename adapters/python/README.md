@@ -2,20 +2,27 @@
 
 Argentic runs the agent loop (model calls, memory, journal). These files take the tools you already have and hand them to Argentic. Nothing here runs LangChain's or LangGraph's agent loop.
 
-- `argentic.py`: client plus `run_durable`. Standard library only, Python 3.10+.
-- `argentic_langchain.py`: turns LangChain / LangGraph tools into `run_durable` tools. Needs `langchain-core`.
-- `argentic_openai_agents.py`: turns OpenAI Agents SDK `@function_tool` tools (and an `Agent`'s instructions) into `run_durable` inputs. Needs `openai-agents`. Nothing here runs `Runner`.
+- `argentic_labs`: client plus `run_durable`. Standard library only, Python 3.10+.
+- `argentic_labs.langchain`: turns LangChain / LangGraph tools into `run_durable` tools. Needs `langchain-core`.
+- `argentic_labs.openai_agents`: turns OpenAI Agents SDK `@function_tool` tools (and an `Agent`'s instructions) into `run_durable` inputs. Needs `openai-agents`. Nothing here runs `Runner`.
 
 ## Install
 
-Copy `argentic.py` (and `argentic_langchain.py` or `argentic_openai_agents.py` for your framework) next to your code.
+Once published (not yet; until then use the copy path below):
+
+```
+pip install argentic-labs
+pip install "argentic-labs[langchain]"      # or [openai-agents]
+```
+
+Not published yet, or you want to vendor it: clone this repo and copy the `argentic_labs/` folder next to your code (or put `adapters/python` on `PYTHONPATH`).
 
 ## Use
 
 ```python
 from langchain_core.tools import tool
-from argentic import Argentic, run_durable, model_from_env
-from argentic_langchain import from_langchain_tools
+from argentic_labs import Argentic, run_durable, model_from_env
+from argentic_labs.langchain import from_langchain_tools
 
 @tool
 def close_ticket(ticket_id: str, note: str) -> str:
