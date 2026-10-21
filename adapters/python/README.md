@@ -3,6 +3,7 @@
 Argentic runs the agent loop (model calls, memory, journal). These files take the tools you already have and hand them to Argentic. Nothing here runs LangChain's or LangGraph's agent loop.
 
 - `argentic_labs`: client plus `run_durable`. Standard library only, Python 3.10+.
+- `argentic_labs.tools`: `tool_pack`, retry-safe tools for Stripe, Resend, SMTP, Slack, GitHub and a generic HTTP POST. Standard library only. See [TOOLS.md](TOOLS.md).
 - `argentic_labs.langchain`: turns LangChain / LangGraph tools into `run_durable` tools. Needs `langchain-core`.
 - `argentic_labs.openai_agents`: turns OpenAI Agents SDK `@function_tool` tools (and an `Agent`'s instructions) into `run_durable` inputs. Needs `openai-agents`. Nothing here runs `Runner`.
 
