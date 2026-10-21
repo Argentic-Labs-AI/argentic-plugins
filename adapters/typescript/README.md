@@ -1,0 +1,43 @@
+# Argentic for TypeScript
+
+Argentic runs the agent loop. Your Vercel AI SDK tools and system prompt carry over; the AI SDK's own loop (`generateText`, `Agent`) is not used.
+
+Each tool call the agent makes comes back to your code to carry out. If the process dies mid-run, run it again: it resumes without repeating a finished action, and the run keeps proof of what ran.
+
+## Install
+
+Copy the files into your project. No package to install beyond what you already use.
+
+- `argentic.ts`: client and `runDurable`, no dependencies, Node 22+.
+- `ai-sdk.ts`: `fromAiSdkTools`, needs `ai` v5 or v6.
+
+## Use
+
+```ts
+import { tool } from 'ai'
+import { z } from 'zod'
+import { Argentic, runDurable } from './argentic.ts'
+import { fromAiSdkTools } from './ai-sdk.ts'
+
+const tools = { refund_order: tool({
+  description: 'Refund an order.',
+  inputSchema: z.object({ order_id: z.string(), amount_usd: z.number() }),
+  execute: async (args, { toolCallId }) => refund(args, toolCallId),
+}) }
+
+const client = new Argentic({ apiKey: process.env.ARGENTIC_API_KEY!, modelKey: process.env.MODEL_KEY })
+const out = await runDurable({
+  client, agent: 'my-agent', runId: 'order-1182', ledgerPath: '.argentic-ledger.json',
+  task: 'Refund order 1182.', system: 'Call one tool per turn.',
+  tools: await fromAiSdkTools(tools),
+})
+console.log(out.reply)
+```
+
+Keep `agent` and `runId` the same across restarts. `client.replay(agent, wakeId)` re-renders a wake's prompts from the journal and compares them to what the model saw; it calls no model and spends nothing.
+
+## What to know
+
+Delivery is at-least-once. An action that was running when the process died, before its result reached the local ledger, runs again on resume. Make your handlers safe to repeat: the AI SDK `toolCallId` your `execute` receives is a stable key (`agent:seq`) to dedupe on.
+
+A full walkthrough is in [`examples/ai-sdk`](../../examples/ai-sdk).
