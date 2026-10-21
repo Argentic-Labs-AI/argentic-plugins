@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "argentic",
+  "version": "0.3.1",
+  "description": "Agents that resume after a crash without repeating finished actions, with a record of every run.",
+  "author": { "name": "Argentic Labs", "url": "https://getargentic.com" },
+  "homepage": "https://getargentic.com/docs",
+  "license": "MIT",
+  "keywords": ["agents", "memory", "mcp", "argentic"],
+  "skills": "./skills/",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Argentic",
+        "shortDescription": "Durable agents with a record of every run",
+        "developerName": "Argentic Labs",
+        "category": "Developer Tools",
+        "capabilities": ["Read", "Write"],
+        "websiteURL": "https://getargentic.com",
+        "supportURL": "https://getargentic.com/docs",
+        "privacyPolicyURL": "https://getargentic.com/privacy",
+        "termsOfServiceURL": "https://getargentic.com/terms",
+        "defaultPrompt": [
+          "Show my Argentic account and this month's usage",
+          "List the recent wakes for my agent and read its journal"
+        ],
+        "brandColor": "#000000",
+        "composerIcon": "./assets/logo.png",
+        "logo": "./assets/logo.png"
+      }
+    }
+  }
+}

@@ -51,6 +51,16 @@ Customize, Connectors, Add custom connector, URL `https://getargentic.com/mcp`. 
 
 For the skills: Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `Argentic-Labs-AI/argentic-plugins`.
 
+## Cursor
+
+Once the listing is live, search for Argentic in the Cursor marketplace. Until then, add the MCP by hand in `~/.cursor/mcp.json`:
+
+```
+{"mcpServers": {"argentic": {"url": "https://getargentic.com/mcp"}}}
+```
+
+Cursor opens the sign-in when you enable the server.
+
 ## Codex
 
 ```
