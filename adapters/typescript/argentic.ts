@@ -282,6 +282,8 @@ export interface RunOptions {
   onAction?: (info: ActionInfo) => void
   /** Called for an action the ledger says already finished, so it is not run again. */
   onSkip?: (info: { tool: string; seq: number }) => void
+  /** Called just before each wake is sent, so a caller can say it is waiting on the model (the first answer can take several seconds). */
+  onWakeStart?: (info: { step: number }) => void
   /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key. */
   onWake?: (info: { step: number; wakeId: string; status: WakeStatus; replayed: boolean }) => void
   /** Kill this process hard after the Nth newly executed action (to try a crash). */
@@ -326,6 +328,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
     if (opts.system) body.system = opts.system
     if (opts.limits) body.limits = opts.limits
 
+    opts.onWakeStart?.({ step })
     const res = await client.wake(agent, body, key)
     steps = step + 1
     wakes.push(res.wake_id)

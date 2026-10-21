@@ -135,9 +135,13 @@ async function demo(argv: string[]) {
     maxSteps: 10,
     crashAfterActions: killAfter,
     log: () => {},
-    onWake: ({ step, replayed }) => {
-      if (replayed) out(dim(`  model turn ${step + 1}: answer already in the journal, sent back without calling the model again`))
-      else out(dim(`  model turn ${step + 1}: asked the model`))
+    onWakeStart: ({ step }) => {
+      if (step === 0 && !resuming) out(dim('  The first answer can take 15 seconds and nothing runs before it, so wait for the first action before pressing Ctrl-C.'))
+      process.stdout.write(dim(`  model turn ${step + 1}: asking the model… `))
+    },
+    onWake: ({ replayed }) => {
+      if (replayed) out(dim('answer already in the journal, sent back without calling the model again'))
+      else out(dim('answered'))
     },
     onSkip: ({ tool, seq }) => out(`  ${dim('↷')} #${seq} ${tool.padEnd(14)} ${dim('finished on an earlier run, skipped')}`),
     onAction: ({ executed }) => {
