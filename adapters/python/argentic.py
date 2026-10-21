@@ -47,7 +47,7 @@ def model_from_env(env: dict[str, str] | None = None) -> dict[str, Any]:
     e = os.environ if env is None else env
     return {
         "provider": e.get("ARGENTIC_MODEL_PROVIDER", "nvidia"),
-        "id": e.get("ARGENTIC_MODEL_ID", "nvidia/nemotron-3-super-120b-a12b"),
+        "id": e.get("ARGENTIC_MODEL_ID", "nvidia/nemotron-3.5-lightning-30b-a3b"),
         "prices": {
             "in": float(e.get("ARGENTIC_PRICE_IN", "0")),
             "out": float(e.get("ARGENTIC_PRICE_OUT", "0")),
@@ -146,7 +146,9 @@ class Argentic:
                 self._sleep(BACKOFF[failures])
                 failures += 1
                 continue
-            raise ArgenticError(f"wake failed: HTTP {status} {data.get('error', '')}".strip(), status, data)
+            detail = data.get("detail")
+            more = f": {detail if isinstance(detail, str) else json.dumps(detail)}" if detail is not None else ""
+            raise ArgenticError(f"wake failed: HTTP {status} {data.get('error', '')}{more}".strip(), status, data)
 
     def replay(self, agent: str, wake: str) -> dict[str, Any]:
         """Re-render a wake's prompts from the journal and compare them to what was recorded."""
@@ -165,7 +167,7 @@ def summarize_replay(result: dict[str, Any]) -> str:
         return f"{len(turns)} turns, differ at turn {', '.join(differ)}"
     if unchecked:
         return f"{len(turns)} turns, {len(turns) - unchecked} match, {unchecked} could not be checked"
-    return f"{len(turns)} turns, all match"
+    return f"{len(turns)} turn{'' if len(turns) == 1 else 's'}, all match"
 
 
 # ---- durable runs ---------------------------------------------------------
@@ -230,6 +232,22 @@ def _key_part(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.:-]", "-", s)
 
 
+def to_argentic_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Trim a JSON schema to the subset Argentic accepts: an object of string, number,
+    integer, boolean or array-of-those properties, with description, enum and required.
+    Framework extras ($schema, additionalProperties, title, defaults) are dropped."""
+    props: dict[str, Any] = {}
+    for name, prop in (schema or {}).get("properties", {}).items():
+        out = {k: prop[k] for k in ("type", "description", "enum") if k in prop}
+        if prop.get("type") == "array" and isinstance(prop.get("items"), dict) and "type" in prop["items"]:
+            out["items"] = {"type": prop["items"]["type"]}
+        props[name] = out
+    result: dict[str, Any] = {"type": "object", "properties": props}
+    if schema and schema.get("required"):
+        result["required"] = list(schema["required"])
+    return result
+
+
 def run_durable(
     client: Argentic,
     *,
@@ -252,7 +270,8 @@ def run_durable(
     so handlers should use ctx.idempotency_key (at-least-once)."""
     ledger = Ledger(ledger_path)
     by_name = {t.name: t for t in tools}
-    declared = [{"name": t.name, "description": t.description, "parameters": t.parameters} for t in tools]
+    declared = [{"name": t.name, "description": t.description or t.name,
+                 "parameters": to_argentic_schema(t.parameters)} for t in tools]
     wakes: list[str] = []
     spent = 0.0
     reply, status, steps = "", "done", 0

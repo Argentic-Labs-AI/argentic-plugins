@@ -107,7 +107,7 @@ async function main() {
   for (const wake of out.wakes) {
     const r = await client.replay(agent, wake)
     const verdict = r.mismatched === 0 && r.unverifiable === 0 ? 'all match' : `${r.mismatched} differ, ${r.unverifiable} not checkable`
-    console.log(`replay ${wake}: ${r.turns.length} turns, ${verdict}`)
+    console.log(`replay ${wake}: ${r.turns.length} turn${r.turns.length === 1 ? "" : "s"}, ${verdict}`)
   }
   const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://argentic-labs.vercel.app').replace(/\/+$/, '')
   console.log(`\nOpen ${dash}/platform -> Runs -> ${agent} to see the run timeline, then press Verify this run.`)

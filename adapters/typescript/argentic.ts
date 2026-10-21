@@ -14,7 +14,7 @@ export interface ModelSpec {
 /** The free default model. */
 export const freeModel: ModelSpec = {
   provider: 'nvidia',
-  id: 'nvidia/nemotron-3-super-120b-a12b',
+  id: 'nvidia/nemotron-3.5-lightning-30b-a3b',
   prices: { in: 0, out: 0 },
 }
 
@@ -23,6 +23,26 @@ export interface ToolDecl {
   name: string
   description: string
   parameters: Record<string, unknown>
+}
+
+const propKeys = ['type', 'description', 'enum'] as const
+
+/**
+ * Trim a JSON schema to the subset Argentic accepts: an object of string, number,
+ * integer, boolean or array-of-those properties, with description, enum and required.
+ * Framework extras ($schema, additionalProperties, title, defaults) are dropped.
+ */
+export function toArgenticSchema(schema: Record<string, any>): Record<string, unknown> {
+  const properties: Record<string, unknown> = {}
+  for (const [name, prop] of Object.entries<Record<string, any>>(schema?.properties ?? {})) {
+    const out: Record<string, unknown> = {}
+    for (const k of propKeys) if (prop[k] !== undefined) out[k] = prop[k]
+    if (prop.type === 'array' && prop.items?.type) out.items = { type: prop.items.type }
+    properties[name] = out
+  }
+  const result: Record<string, unknown> = { type: 'object', properties }
+  if (Array.isArray(schema?.required) && schema.required.length) result.required = schema.required
+  return result
 }
 
 export interface WakeBody {
@@ -164,8 +184,9 @@ export class Argentic {
       }
       if (res && res.status < 500) {
         const info = await res.json().catch(() => undefined)
-        const code = (info as { error?: string } | undefined)?.error
-        throw new ArgenticError(`${res.status} ${code ?? res.statusText}`, res.status, info)
+        const { error: code, detail } = (info ?? {}) as { error?: string; detail?: unknown }
+        const more = detail === undefined ? '' : `: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`
+        throw new ArgenticError(`${res.status} ${code ?? res.statusText}${more}`, res.status, info)
       }
       // 5xx or network error: same request, same key.
       if (failures >= this.backoffMs.length) {
@@ -268,7 +289,11 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
   const model = opts.model ?? freeModel
   const ledger = new Ledger(opts.ledgerPath)
   const byName = new Map(tools.map((t) => [t.name, t]))
-  const decls: ToolDecl[] = tools.map(({ name, description, parameters }) => ({ name, description, parameters }))
+  const decls: ToolDecl[] = tools.map(({ name, description, parameters }) => ({
+    name,
+    description: description || name,
+    parameters: toArgenticSchema(parameters),
+  }))
 
   const wakes: string[] = []
   let message = opts.task
