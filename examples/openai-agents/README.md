@@ -7,7 +7,7 @@ You need Python 3.10+. About 10 minutes.
 Get the code first. The example imports the adapter from `../../adapters`, so clone the whole repo:
 
 ```bash
-git clone https://github.com/Organisely/argentic-plugins
+git clone https://github.com/argentic-labs-ai/argentic-plugins
 cd argentic-plugins/examples/openai-agents
 ```
 
