@@ -215,8 +215,12 @@ class RunResult:
     spent_usd: float
 
 
+_WAKES = "_wakes"  # no colon, so never an action key
+
+
 class Ledger:
-    """Results of finished actions, keyed by f"{agent}:{seq}". Saved atomically."""
+    """Results of finished actions, keyed by f"{agent}:{seq}". Saved atomically.
+    Under "_wakes", wakes that stopped at their turn or time limit with actions to run."""
 
     def __init__(self, path: str):
         self.path = path
@@ -227,6 +231,12 @@ class Ledger:
 
     def get(self, key: str) -> Any | None:
         return self.entries.get(key)
+
+    def get_wake(self, key: str) -> dict[str, Any] | None:
+        return self.entries.get(_WAKES, {}).get(key)
+
+    def put_wake(self, key: str, wake: dict[str, Any]) -> None:
+        self.put(_WAKES, {**self.entries.get(_WAKES, {}), key: wake})
 
     def put(self, key: str, entry: dict[str, Any]) -> None:
         self.entries[key] = entry
@@ -250,6 +260,12 @@ def _kill_self() -> None:
 
 def _key_part(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9_.:-]", "-", s)
+
+
+# A wake stopped by its turn or time limit leaves the agent mid-task. Its actions have not been
+# answered, so the next wake sends their results and the agent carries on from there with them,
+# instead of the same key resuming it blind.
+_CARRIES_ON = ("turn_cap", "time_cap")
 
 
 def to_argentic_schema(schema: dict[str, Any]) -> dict[str, Any]:
@@ -304,15 +320,23 @@ def run_durable(
         else:
             message = "Results of the tools you asked for:\n" + json.dumps(previous)
         key = _key_part(f"{run_id}.{step}")[:128]
-        resp = client.wake(
-            agent, message, model=model, idempotency_key=key,
-            system=system, tools=declared, limits=limits,
-        )
+        # A stopped wake kept in the ledger is not asked again: its actions get their results under the next key.
+        kept = ledger.get_wake(key)
+        if kept is not None:
+            resp = WakeResponse(**{**kept, "replayed": True})
+        else:
+            resp = client.wake(
+                agent, message, model=model, idempotency_key=key,
+                system=system, tools=declared, limits=limits,
+            )
+            if resp.status in _CARRIES_ON and resp.actions:
+                ledger.put_wake(key, {k: v for k, v in vars(resp).items() if k != "replayed"})
         steps = step + 1
         wakes.append(resp.wake_id)
         spent += resp.spent_usd
         reply, status = resp.reply, resp.status
-        log(f"step {step}: wake {resp.wake_id} status={resp.status}" + (" (answer replayed)" if resp.replayed else ""))
+        note = " (stopped answer kept in the ledger)" if kept is not None else " (answer replayed)" if resp.replayed else ""
+        log(f"step {step}: wake {resp.wake_id} status={resp.status}{note}")
 
         previous = []
         for action in resp.actions:
@@ -346,7 +370,7 @@ def run_durable(
                     crash()
             previous.append({"tool": name, "seq": seq, "result": entry["result"]})
 
-        if not resp.actions or resp.status != "done":
+        if not resp.actions or not (resp.status == "done" or resp.status in _CARRIES_ON):
             break
 
     return RunResult(reply=reply, wakes=wakes, steps=steps, status=status, spent_usd=spent)
