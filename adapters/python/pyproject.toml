@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "argentic-labs"
-version = "0.1.4"
+version = "0.1.5"
 description = "Argentic client for Python: durable agent runs that resume without repeating a finished action. Adapters for LangChain / LangGraph and the OpenAI Agents SDK."
 readme = "README.md"
 license = "MIT"

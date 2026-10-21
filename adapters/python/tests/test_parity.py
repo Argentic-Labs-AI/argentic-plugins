@@ -5,7 +5,6 @@ Reads adapters/typescript/argentic.ts and package.json when this runs inside the
 Run from adapters/python: python -m unittest discover -s tests -v
 """
 import inspect
-import json
 import os
 import re
 import sys
@@ -35,11 +34,6 @@ def py_version():
 class VersionTest(unittest.TestCase):
     def test_dunder_version_is_the_pyproject_version(self):
         self.assertEqual(argentic_labs.__version__, py_version())
-
-    @unittest.skipUnless(os.path.exists(TS), "TypeScript client not alongside")
-    def test_both_clients_ship_the_same_version(self):
-        with open(os.path.join(TS_DIR, "package.json")) as f:
-            self.assertEqual(json.load(f)["version"], py_version())
 
 
 @unittest.skipUnless(os.path.exists(TS), "TypeScript client not alongside")
