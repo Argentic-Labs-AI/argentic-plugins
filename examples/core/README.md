@@ -51,9 +51,20 @@ cd argentic-plugins/examples/core
 
    You will see `skip seq 7 refund_order: already done before` (your number may differ), then the email and ticket steps, then a one-line summary. The script also replays each wake and prints the outbox counts: one line per tool.
 
-7. Open https://getargentic.com/platform, go to **Runs**, pick your agent (printed as `refund-demo-xxxxxx`) and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
+7. Open the link the second run prints (`https://getargentic.com/platform/runs/<agent>/<run>/`). It is the run that crashed, in your dashboard. Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
 
 Use `npm start -- --fresh` to start over with a new agent.
+
+## The same demo in Python
+
+[`refund.py`](refund.py) is the Python version, with the same three tools, the same outbox and the same replay and proof steps. It needs only Python 3.10+ and the same two keys; it imports the client from `../../adapters/python`, so there is nothing to install.
+
+```bash
+ARGENTIC_CRASH_AFTER=1 python3 refund.py   # dies after the refund
+python3 refund.py                          # skips it and finishes
+```
+
+fish: `env ARGENTIC_CRASH_AFTER=1 python3 refund.py`. `python3 -m unittest -v` runs its offline test.
 
 ## Your own tools
 

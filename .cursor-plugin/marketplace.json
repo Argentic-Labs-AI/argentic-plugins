@@ -1,0 +1,14 @@
+{
+  "name": "argentic",
+  "owner": {
+    "name": "Argentic Labs",
+    "url": "https://getargentic.com"
+  },
+  "plugins": [
+    {
+      "name": "argentic",
+      "source": "plugins/argentic",
+      "description": "Agents that resume after a crash without repeating finished actions, with a record of every run."
+    }
+  ]
+}

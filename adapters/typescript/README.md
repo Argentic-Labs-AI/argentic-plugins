@@ -19,7 +19,7 @@ npm i @argentic-labs/client
 ```
 
 - `@argentic-labs/client`: the client and `runDurable`, no dependencies, Node 22+.
-- `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5 or v6.
+- `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5, v6 or v7.
 - `@argentic-labs/client/tools`: `toolPack`, retry-safe tools for Stripe, Resend, SMTP, Slack, GitHub and a generic HTTP POST. See [TOOLS.md](TOOLS.md).
 - `@argentic-labs/client/mastra`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
 
@@ -39,7 +39,8 @@ const tools = { refund_order: tool({
   execute: async (args, { toolCallId }) => refund(args, toolCallId),
 }) }
 
-const client = new Argentic({ apiKey: process.env.ARGENTIC_API_KEY!, modelKey: process.env.MODEL_KEY })
+// apiKey defaults to ARGENTIC_API_KEY and modelKey to MODEL_KEY
+const client = new Argentic()
 const out = await runDurable({
   client, agent: 'my-agent', runId: 'order-1182', ledgerPath: '.argentic-ledger.json',
   task: 'Refund order 1182.', system: 'Call one tool per turn.',
@@ -48,7 +49,7 @@ const out = await runDurable({
 console.log(out.reply)
 ```
 
-Keep `agent` and `runId` the same across restarts. `client.replay(agent, wakeId)` re-renders a wake's prompts from the journal and compares them to what the model saw; it calls no model and spends nothing.
+Keep `agent` and `runId` the same across restarts. A request that takes longer than `timeoutMs` (default 300000, 0 for no limit) counts as a network failure and is retried with the same key. If the ledger file is not valid JSON, `runDurable` warns on stderr, sets the file aside as `<path>.corrupt` and starts empty, so finished actions may run again. `client.replay(agent, wakeId)` re-renders a wake's prompts from the journal and compares them to what the model saw; it calls no model and spends nothing.
 
 ## What to know
 

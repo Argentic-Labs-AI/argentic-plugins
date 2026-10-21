@@ -94,7 +94,9 @@ def run(client, workdir, model, fresh=False, crash_after=None, crash=None, log=p
     for wake_id in result.wakes:
         log(f"replay {wake_id}: {summarize_replay(client.replay(state['agent'], wake_id))}")
     dash = os.environ.get("ARGENTIC_DASHBOARD_URL", "https://getargentic.com").rstrip("/")
-    log(f"Open {dash}/platform -> Runs -> {state['agent']} to see the run timeline, then open the oldest run and press Check under Proof of what ran.")
+    # the first wake is the run that was cut off: a rerun gets its stored answer back under the same id
+    if result.wakes:
+        log(f"See every step, then press Check under Proof of what ran: {dash}/platform/runs/{state['agent']}/{result.wakes[0]}/")
     counts = outbox_counts(outbox_path)
     log("outbox: " + ", ".join(f"{n} x{c}" for n, c in counts.items()))
     return result, counts

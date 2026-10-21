@@ -1,0 +1,26 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.argentic-labs-ai/argentic",
+  "title": "Argentic",
+  "description": "Kill an agent mid-action and it resumes without repeating finished actions. Proof of every run.",
+  "version": "0.3.1",
+  "websiteUrl": "https://getargentic.com",
+  "repository": {
+    "url": "https://github.com/Argentic-Labs-AI/argentic-plugins",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://getargentic.com/mcp",
+      "headers": [
+        {
+          "name": "X-Model-Key",
+          "description": "Your own key for the model provider your agents run on. Only needed to wake an agent; Argentic does not store it.",
+          "isRequired": false,
+          "isSecret": true
+        }
+      ]
+    }
+  ]
+}

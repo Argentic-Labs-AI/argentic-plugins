@@ -4,17 +4,25 @@ build-backend = "hatchling.build"
 
 [project]
 name = "argentic-labs"
-version = "0.1.0"
+version = "0.1.5"
 description = "Argentic client for Python: durable agent runs that resume without repeating a finished action. Adapters for LangChain / LangGraph and the OpenAI Agents SDK."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
-authors = [{ name = "Argentic Labs" }]
-keywords = ["agents", "durable", "langchain", "langgraph", "openai-agents", "argentic"]
+authors = [{ name = "Argentic Labs", email = "hi@getargentic.com" }]
+keywords = ["agents", "ai-agents", "durable", "resume", "idempotent", "langchain", "langgraph", "openai-agents", "argentic"]
 classifiers = [
-  "Programming Language :: Python :: 3",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
   "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Libraries :: Python Modules",
   "Typing :: Typed",
 ]
 dependencies = []
@@ -23,10 +31,15 @@ dependencies = []
 langchain = ["langchain-core>=1.0"]
 openai-agents = ["openai-agents>=0.24"]
 
+[project.scripts]
+argentic-labs = "argentic_labs.cli:main"
+
 [project.urls]
 Homepage = "https://getargentic.com"
-Documentation = "https://getargentic.com/docs"
+Documentation = "https://getargentic.com/docs/client/"
 Repository = "https://github.com/Argentic-Labs-AI/argentic-plugins"
+Issues = "https://github.com/Argentic-Labs-AI/argentic-plugins/issues"
+Changelog = "https://getargentic.com/changelog/"
 
 [tool.hatch.build.targets.wheel]
 packages = ["argentic_labs"]

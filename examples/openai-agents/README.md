@@ -51,7 +51,7 @@ Use `python refund.py --fresh` to start over with a new agent.
 
 ## 4. See the proof of what ran
 
-Open https://getargentic.com/platform, go to **Runs**, pick the agent named in the output and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
+Open the link the second run prints (`https://getargentic.com/platform/runs/<agent>/<run>/`). It is the run that crashed, in your dashboard. Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
 
 ## Tests
 

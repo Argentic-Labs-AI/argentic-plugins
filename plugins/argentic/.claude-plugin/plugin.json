@@ -9,6 +9,7 @@
   },
   "homepage": "https://getargentic.com/docs",
   "license": "MIT",
+  "privacyPolicyUrl": "https://getargentic.com/privacy",
   "keywords": [
     "agents",
     "memory",

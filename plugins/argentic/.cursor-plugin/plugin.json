@@ -1,0 +1,17 @@
+{
+  "name": "argentic",
+  "displayName": "Argentic",
+  "version": "0.3.1",
+  "description": "Agents that resume after a crash without repeating finished actions, with a record of every run. One MCP that signs in with your Argentic account.",
+  "author": {
+    "name": "Argentic Labs",
+    "url": "https://getargentic.com"
+  },
+  "homepage": "https://getargentic.com/docs",
+  "repository": "https://github.com/Argentic-Labs-AI/argentic-plugins",
+  "license": "MIT",
+  "keywords": ["agents", "memory", "mcp", "argentic"],
+  "logo": "assets/logo.png",
+  "skills": "./skills/",
+  "mcpServers": "./mcp.json"
+}
