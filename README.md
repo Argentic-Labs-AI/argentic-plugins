@@ -6,6 +6,28 @@ This repo holds only manifests, skills, MCP settings and small client adapters. 
 
 There is one MCP, `https://argentic-labs.vercel.app/mcp`. You sign in with your Argentic account (OAuth) and pick an organization. No API key is needed for the MCP. To wake an agent you also need your own key for a model provider; it travels in the `X-Model-Key` header on each request and Argentic never stores it.
 
+## Kill it mid-run (2 minutes)
+
+You need an Argentic API key from https://argentic-labs.vercel.app/platform and a model key. The default model is a free NVIDIA one; get its key at https://build.nvidia.com. Node 22 or newer.
+
+```
+export ARGENTIC_API_KEY=aek_...
+export MODEL_KEY=nvapi-...
+npx @argentic-labs/client demo
+```
+
+fish:
+
+```
+set -x ARGENTIC_API_KEY aek_...
+set -x MODEL_KEY nvapi-...
+npx @argentic-labs/client demo
+```
+
+A small support agent refunds an order, emails the customer and closes the ticket, one action every couple of seconds. Press Ctrl-C while it works, then run the same command again from the same folder. The rerun skips the actions that already finished and does the rest. An action you cut off halfway runs again, which is safe because every action carries a stable key. At the end the demo counts what landed in its outbox (one line per action), checks every wake against the journal, and tells you where the run is in the dashboard. Open the run you killed and press Check under Proof of what ran.
+
+`--fresh` starts a new run. `--kill-after 1` kills it for you if you'd rather not race the keyboard. The source is [`adapters/typescript/cli.ts`](adapters/typescript/cli.ts).
+
 ## Claude Code
 
 ```

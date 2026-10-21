@@ -280,6 +280,10 @@ export interface RunOptions {
   limits?: WakeBody['limits']
   /** Called after each newly executed action is written to the ledger. */
   onAction?: (info: ActionInfo) => void
+  /** Called for an action the ledger says already finished, so it is not run again. */
+  onSkip?: (info: { tool: string; seq: number }) => void
+  /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key. */
+  onWake?: (info: { step: number; wakeId: string; status: WakeStatus; replayed: boolean }) => void
   /** Kill this process hard after the Nth newly executed action (to try a crash). */
   crashAfterActions?: number
   log?: (line: string) => void
@@ -329,6 +333,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
     spentUsd += res.spent_usd ?? 0
     status = res.status
     log(`step ${step}: wake ${res.wake_id} ${res.status}${res.idempotentReplay ? ' (stored answer replayed)' : ''}`)
+    opts.onWake?.({ step, wakeId: res.wake_id, status: res.status, replayed: !!res.idempotentReplay })
 
     const actions = res.actions ?? []
     const results: { tool: string; seq: number; result: unknown }[] = []
@@ -337,6 +342,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
       const done = ledger.get(ledgerKey)
       if (done) {
         log(`skip seq ${action.seq} ${action.tool}: already done before`)
+        opts.onSkip?.({ tool: action.tool, seq: action.seq })
         results.push({ tool: action.tool, seq: action.seq, result: done.result })
         continue
       }

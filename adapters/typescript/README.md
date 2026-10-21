@@ -4,6 +4,14 @@ Argentic runs the agent loop. Your Vercel AI SDK or Mastra tools and system prom
 
 Each tool call the agent makes comes back to your code to carry out. If the process dies mid-run, run it again: it resumes without repeating a finished action, and the run keeps proof of what ran.
 
+## Try it
+
+```
+npx @argentic-labs/client demo
+```
+
+Set `ARGENTIC_API_KEY` and `MODEL_KEY` first. Press Ctrl-C while it works, run it again, and it skips what already finished. Details in the [repo README](../../README.md#kill-it-mid-run-2-minutes).
+
 ## Install
 
 ```
