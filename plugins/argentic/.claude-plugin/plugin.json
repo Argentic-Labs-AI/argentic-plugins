@@ -1,13 +1,13 @@
 {
   "name": "argentic",
   "displayName": "Argentic",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "One MCP that signs in with your Argentic account.",
   "author": {
     "name": "Argentic Labs",
-    "url": "https://argentic-labs.vercel.app"
+    "url": "https://getargentic.com"
   },
-  "homepage": "https://argentic-labs.vercel.app/docs",
+  "homepage": "https://getargentic.com/docs",
   "license": "MIT",
   "keywords": [
     "agents",

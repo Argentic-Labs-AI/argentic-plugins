@@ -13,7 +13,7 @@ cd argentic-plugins/examples/langchain
 
 ## 1. Get two keys
 
-- Argentic API key: https://argentic-labs.vercel.app/platform
+- Argentic API key: https://getargentic.com/platform
 - A free NVIDIA NIM key: build.nvidia.com
 
 ## 2. Set up
@@ -51,7 +51,7 @@ Use `python refund.py --fresh` to start over with a new agent.
 
 ## 4. See the proof of what ran
 
-Open https://argentic-labs.vercel.app/platform, go to **Runs**, pick the agent named in the output and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
+Open https://getargentic.com/platform, go to **Runs**, pick the agent named in the output and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
 
 ## Tests
 

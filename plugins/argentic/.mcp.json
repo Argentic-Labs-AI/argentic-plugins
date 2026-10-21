@@ -2,7 +2,7 @@
   "mcpServers": {
     "argentic": {
       "type": "http",
-      "url": "https://argentic-labs.vercel.app/mcp",
+      "url": "https://getargentic.com/mcp",
       "headers": {
         "X-Model-Key": "${user_config.model_key}"
       }

@@ -7,7 +7,7 @@ description: Use when building, testing or debugging something that runs agents 
 
 Argentic runs an agent on a model you choose, on your own model key, and keeps that agent's memory between calls. You send a message to an agent id. You get a reply back, plus what it did and what it cost.
 
-Full reference: https://argentic-labs.vercel.app/docs
+Full reference: https://getargentic.com/docs
 
 ## The MCP tools
 
@@ -70,4 +70,4 @@ Agents do not wake themselves. Wake with `schedule: true` and the agent may make
 
 ## Do not claim
 
-Check https://argentic-labs.vercel.app/docs for the current list. There is no streaming. Do not say the journal is signed or tamper-proof, and do not say a replay re-ran the model. Say what a call actually returned.
+Check https://getargentic.com/docs for the current list. There is no streaming. Do not say the journal is signed or tamper-proof, and do not say a replay re-ran the model. Say what a call actually returned.

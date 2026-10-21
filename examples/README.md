@@ -14,7 +14,7 @@ All five tell the same story: refund an order, email the customer, close the tic
 
 Just want to see it? `npx @argentic-labs/client demo` runs the same story with nothing to clone (see the [repo README](../README.md#kill-it-mid-run-2-minutes)). No framework? Start with [core](core/). The core files in [`../adapters`](../adapters/) work on their own: `runDurable` (TypeScript) and `run_durable` (Python) take plain tools with a JSON schema and a handler.
 
-You need an Argentic API key from https://argentic-labs.vercel.app/platform and a model key. The default model is a free NVIDIA NIM model (get a key at https://build.nvidia.com); set `ARGENTIC_MODEL_PROVIDER`, `ARGENTIC_MODEL_ID`, `ARGENTIC_PRICE_IN` and `ARGENTIC_PRICE_OUT` to use another.
+You need an Argentic API key from https://getargentic.com/platform and a model key. The default model is a free NVIDIA NIM model (get a key at https://build.nvidia.com); set `ARGENTIC_MODEL_PROVIDER`, `ARGENTIC_MODEL_ID`, `ARGENTIC_PRICE_IN` and `ARGENTIC_PRICE_OUT` to use another.
 
 ## Settings
 
