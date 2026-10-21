@@ -20,6 +20,7 @@ npm i @argentic-labs/client
 
 - `@argentic-labs/client`: the client and `runDurable`, no dependencies, Node 22+.
 - `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5 or v6.
+- `@argentic-labs/client/tools`: `toolPack`, retry-safe tools for Stripe, Resend, SMTP, Slack, GitHub and a generic HTTP POST. See [TOOLS.md](TOOLS.md).
 - `@argentic-labs/client/mastra`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
 
 To vendor it instead: clone this repo and copy `argentic.ts`, `ai-sdk.ts` and `mastra.ts` into your project (Node 22+, no package needed beyond what you already use).

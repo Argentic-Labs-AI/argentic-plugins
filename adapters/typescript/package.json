@@ -12,10 +12,12 @@
   "exports": {
     ".": { "types": "./dist/argentic.d.ts", "default": "./dist/argentic.js" },
     "./ai-sdk": { "types": "./dist/ai-sdk.d.ts", "default": "./dist/ai-sdk.js" },
-    "./mastra": { "types": "./dist/mastra.d.ts", "default": "./dist/mastra.js" }
+    "./mastra": { "types": "./dist/mastra.d.ts", "default": "./dist/mastra.js" },
+    "./tools": { "types": "./dist/tools.d.ts", "default": "./dist/tools.js" }
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test test/*.test.ts",
     "prepack": "npm run build"
   },
   "peerDependencies": {
