@@ -30,6 +30,26 @@ class ArgenticError(Exception):
         self.body = body
 
 
+def hint_for(e: BaseException) -> str | None:
+    """A next step for an error a first run tends to hit, or None. Examples print it instead of a traceback."""
+    if not isinstance(e, ArgenticError):
+        return None
+    code = e.body.get("error") if isinstance(e.body, dict) else None
+    if e.status == 401:
+        return "Check ARGENTIC_API_KEY. A key only works on the API it was made for, so if you set ARGENTIC_BASE_URL, make the key in that dashboard."
+    if code == "model_key_rejected":
+        return "Your model provider refused MODEL_KEY. Check it is a key for the provider in the error (a free NVIDIA key starts with nvapi-)."
+    if code == "bad_model":
+        return "Your provider does not know this model id. Set ARGENTIC_MODEL_ID to one it serves, or unset it for the free default."
+    if e.status == 402:
+        return "This account has no balance left for wakes. See the Billing page in the dashboard."
+    if e.status == 429:
+        return "Too many requests a minute for this key. Wait for the time in the error and run the same command again."
+    if e.status is None or e.status >= 500:
+        return "The API did not answer. Run the same command again in a minute: it picks up where it stopped."
+    return None
+
+
 @dataclass
 class WakeResponse:
     status: str

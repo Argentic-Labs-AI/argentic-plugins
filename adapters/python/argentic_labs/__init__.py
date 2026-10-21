@@ -10,6 +10,7 @@ from .core import (
     Tool,
     ToolContext,
     WakeResponse,
+    hint_for,
     model_from_env,
     run_durable,
     summarize_replay,
@@ -18,6 +19,6 @@ from .core import (
 
 __all__ = [
     "Argentic", "ArgenticError", "Ledger", "RunResult", "Tool", "ToolContext",
-    "WakeResponse", "model_from_env", "run_durable", "summarize_replay", "to_argentic_schema",
+    "WakeResponse", "hint_for", "model_from_env", "run_durable", "summarize_replay", "to_argentic_schema",
 ]
 __version__ = "0.1.0"
