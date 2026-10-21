@@ -60,7 +60,7 @@ export interface Action {
   seq: number
 }
 
-export type WakeStatus = 'done' | 'spend_cap' | 'budget_cap' | 'turn_cap' | 'error' | 'approval_required'
+export type WakeStatus = 'done' | 'spend_cap' | 'budget_cap' | 'turn_cap' | 'time_cap' | 'error' | 'approval_required'
 
 export interface WakeResult {
   status: WakeStatus
@@ -221,14 +221,21 @@ export interface LedgerEntry {
   at: string
 }
 
+/** A wake that stopped at its turn or time limit with actions to run, kept so a restart sends their results instead of asking the wake again. */
+export type StoppedWake = Omit<WakeResult, 'idempotentReplay'>
+
 export class Ledger {
   private entries: Record<string, LedgerEntry> = {}
+  private wakes: Record<string, StoppedWake> = {}
 
   constructor(readonly path: string) {
     try {
-      this.entries = JSON.parse(readFileSync(path, 'utf8')).entries ?? {}
+      const saved = JSON.parse(readFileSync(path, 'utf8'))
+      this.entries = saved.entries ?? {}
+      this.wakes = saved.wakes ?? {}
     } catch {
       this.entries = {}
+      this.wakes = {}
     }
   }
 
@@ -236,12 +243,26 @@ export class Ledger {
     return this.entries[key]
   }
 
-  /** Write temp file, then rename, so a crash never leaves half a ledger. */
   set(key: string, entry: LedgerEntry): void {
     this.entries[key] = entry
+    this.save()
+  }
+
+  /** The stopped wake answered for this idempotency key, if one was kept. */
+  getWake(key: string): StoppedWake | undefined {
+    return this.wakes[key]
+  }
+
+  setWake(key: string, wake: StoppedWake): void {
+    this.wakes[key] = wake
+    this.save()
+  }
+
+  /** Write temp file, then rename, so a crash never leaves half a ledger. */
+  private save(): void {
     mkdirSync(dirname(this.path) || '.', { recursive: true })
     const tmp = `${this.path}.${process.pid}.tmp`
-    writeFileSync(tmp, JSON.stringify({ entries: this.entries }, null, 2))
+    writeFileSync(tmp, JSON.stringify(Object.keys(this.wakes).length ? { entries: this.entries, wakes: this.wakes } : { entries: this.entries }, null, 2))
     renameSync(tmp, this.path)
   }
 }
@@ -282,7 +303,7 @@ export interface RunOptions {
   onAction?: (info: ActionInfo) => void
   /** Called for an action the ledger says already finished, so it is not run again. */
   onSkip?: (info: { tool: string; seq: number }) => void
-  /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key. */
+  /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key, or the ledger kept a stopped one. */
   onWake?: (info: { step: number; wakeId: string; status: WakeStatus; replayed: boolean }) => void
   /** Kill this process hard after the Nth newly executed action (to try a crash). */
   crashAfterActions?: number
@@ -298,6 +319,12 @@ export interface RunResult {
 }
 
 const safeKey = (s: string) => s.replace(/[^A-Za-z0-9\-_.:]/g, '-').slice(0, 128)
+
+/**
+ * A wake stopped by its turn or time limit leaves the agent mid-task. Its actions have not been answered, so the next
+ * wake sends their results and the agent carries on from there with them, instead of the same key resuming it blind.
+ */
+const carriesOn = (s: WakeStatus) => s === 'turn_cap' || s === 'time_cap'
 
 export async function runDurable(opts: RunOptions): Promise<RunResult> {
   const { client, agent, tools } = opts
@@ -326,13 +353,19 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
     if (opts.system) body.system = opts.system
     if (opts.limits) body.limits = opts.limits
 
-    const res = await client.wake(agent, body, key)
+    // A stopped wake kept in the ledger is not asked again: its actions get their results under the next key.
+    const kept = ledger.getWake(key)
+    const res: WakeResult = kept ? { ...kept, idempotentReplay: true } : await client.wake(agent, body, key)
+    if (!kept && carriesOn(res.status) && res.actions?.length) {
+      const { idempotentReplay: _, ...answer } = res
+      ledger.setWake(key, answer)
+    }
     steps = step + 1
     wakes.push(res.wake_id)
     reply = res.reply ?? ''
     spentUsd += res.spent_usd ?? 0
     status = res.status
-    log(`step ${step}: wake ${res.wake_id} ${res.status}${res.idempotentReplay ? ' (stored answer replayed)' : ''}`)
+    log(`step ${step}: wake ${res.wake_id} ${res.status}${kept ? ' (stopped answer kept in the ledger)' : res.idempotentReplay ? ' (stored answer replayed)' : ''}`)
     opts.onWake?.({ step, wakeId: res.wake_id, status: res.status, replayed: !!res.idempotentReplay })
 
     const actions = res.actions ?? []
@@ -368,7 +401,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
       }
     }
 
-    if (actions.length === 0 || res.status !== 'done') break
+    if (actions.length === 0 || !(res.status === 'done' || carriesOn(res.status))) break
     message = 'Results of the tools you asked for:\n' + JSON.stringify(results)
   }
 
