@@ -4,6 +4,13 @@ A small support agent with three LangChain `@tool` functions: refund an order, e
 
 You need Python 3.10+. About 10 minutes.
 
+Get the code first. The example imports the adapter from `../../adapters`, so clone the whole repo:
+
+```bash
+git clone https://github.com/Organisely/argentic-plugins
+cd argentic-plugins/examples/langchain
+```
+
 ## 1. Get two keys
 
 - Argentic API key: https://argentic-labs.vercel.app/platform
@@ -38,13 +45,13 @@ python refund.py
 
 In fish, use `env ARGENTIC_CRASH_AFTER=1 python refund.py` for the first command.
 
-The first run stops itself right after the refund. The second prints `skip seq 1 refund_order: already done before`, sends the email, closes the ticket and finishes. It then re-checks each wake with `replay` and prints how many outbox lines each tool wrote (1 each).
+The first run stops itself right after the refund. The second prints `skip seq 7 refund_order: already done before` (your number may differ), sends the email, closes the ticket and finishes. It then re-checks each wake with `replay` and prints how many outbox lines each tool wrote (1 each).
 
 Use `python refund.py --fresh` to start over with a new agent.
 
 ## 4. See the proof of what ran
 
-Open https://argentic-labs.vercel.app/platform, go to Runs, pick the agent named in the output, and press **Verify this run**.
+Open https://argentic-labs.vercel.app/platform, go to **Runs**, pick the agent named in the output and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
 
 ## Tests
 
