@@ -19,7 +19,7 @@ npm i @argentic-labs/client
 ```
 
 - `@argentic-labs/client`: the client and `runDurable`, no dependencies, Node 22+.
-- `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5 or v6.
+- `@argentic-labs/client/ai-sdk`: `fromAiSdkTools`, needs `ai` v5, v6 or v7.
 - `@argentic-labs/client/mastra`: `fromMastraTools`, takes the `createTool()` tools you would pass to an Agent (the key is the tool name). Needs `@mastra/core` 1.x for the tools; the adapter itself imports nothing.
 
 To vendor it instead: clone this repo and copy `argentic.ts`, `ai-sdk.ts` and `mastra.ts` into your project (Node 22+, no package needed beyond what you already use).
@@ -38,7 +38,8 @@ const tools = { refund_order: tool({
   execute: async (args, { toolCallId }) => refund(args, toolCallId),
 }) }
 
-const client = new Argentic({ apiKey: process.env.ARGENTIC_API_KEY!, modelKey: process.env.MODEL_KEY })
+// apiKey defaults to ARGENTIC_API_KEY
+const client = new Argentic({ modelKey: process.env.MODEL_KEY })
 const out = await runDurable({
   client, agent: 'my-agent', runId: 'order-1182', ledgerPath: '.argentic-ledger.json',
   task: 'Refund order 1182.', system: 'Call one tool per turn.',

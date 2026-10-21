@@ -132,3 +132,23 @@ test('the same key with a different body is an error', async () => {
     (e: unknown) => e instanceof ArgenticError && e.status === 422,
   )
 })
+
+test('apiKey and baseUrl default to the environment', async () => {
+  const saved = { key: process.env.ARGENTIC_API_KEY, url: process.env.ARGENTIC_BASE_URL }
+  process.env.ARGENTIC_API_KEY = 'env-key'
+  delete process.env.ARGENTIC_BASE_URL
+  try {
+    const seen: { url: string; auth: string | null }[] = []
+    const fetchStub = (async (url: string | URL | Request, init?: RequestInit) => {
+      seen.push({ url: String(url), auth: new Headers(init?.headers).get('authorization') })
+      return new Response(JSON.stringify({ turns: [], mismatched: 0, unverifiable: 0 }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as typeof fetch
+    await new Argentic({ fetch: fetchStub }).replay('a', 'wk_1')
+    assert.equal(seen[0].auth, 'Bearer env-key')
+    assert.ok(seen[0].url.startsWith('https://api.getargentic.com/'))
+  } finally {
+    if (saved.key === undefined) delete process.env.ARGENTIC_API_KEY
+    else process.env.ARGENTIC_API_KEY = saved.key
+    if (saved.url !== undefined) process.env.ARGENTIC_BASE_URL = saved.url
+  }
+})
