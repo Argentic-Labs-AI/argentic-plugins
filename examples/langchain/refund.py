@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "..", "adapters", "python"))
 
 from langchain_core.tools import tool  # noqa: E402
 
-from argentic_labs import Argentic, model_from_env, run_durable, summarize_replay  # noqa: E402
+from argentic_labs import Argentic, hint_for, model_from_env, run_durable, summarize_replay  # noqa: E402
 from argentic_labs.langchain import from_langchain_tools  # noqa: E402
 
 TASK = ("Order 1182 (ticket T-77, customer dana@example.com) arrived broken. Refund the $42 order, "
@@ -109,4 +109,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:  # noqa: BLE001
+        hint = hint_for(e)
+        if hint is None:
+            raise
+        sys.exit(f"\n{e}\n{hint}")
