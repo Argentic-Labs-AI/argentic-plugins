@@ -1,6 +1,6 @@
 """Argentic client and run_durable. Standard library only, Python 3.10+.
 
-Framework adapters live in `argentic_labs.langchain` and `argentic_labs.openai_agents`.
+Framework adapters live in `argentic_labs.langchain`, `argentic_labs.openai_agents` and `argentic_labs.pydantic_ai`.
 `python -m argentic_labs demo` (or the `argentic-labs` command) kills an agent mid-run and resumes it.
 """
 from .core import (

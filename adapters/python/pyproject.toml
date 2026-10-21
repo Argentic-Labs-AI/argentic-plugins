@@ -11,7 +11,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [{ name = "Argentic Labs", email = "hi@getargentic.com" }]
-keywords = ["agents", "ai-agents", "durable", "resume", "idempotent", "langchain", "langgraph", "openai-agents", "argentic"]
+keywords = ["agents", "ai-agents", "durable", "resume", "idempotent", "langchain", "langgraph", "openai-agents", "pydantic-ai", "argentic"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
@@ -30,6 +30,7 @@ dependencies = []
 [project.optional-dependencies]
 langchain = ["langchain-core>=1.0"]
 openai-agents = ["openai-agents>=0.24"]
+pydantic-ai = ["pydantic-ai-slim>=1.107"]
 
 [project.scripts]
 argentic-labs = "argentic_labs.cli:main"
