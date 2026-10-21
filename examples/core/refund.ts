@@ -111,7 +111,8 @@ async function main() {
     console.log(`replay ${wake}: ${r.turns.length} turn${r.turns.length === 1 ? "" : "s"}, ${verdict}`)
   }
   const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://getargentic.com').replace(/\/+$/, '')
-  console.log(`\nOpen ${dash}/platform -> Runs -> ${agent} to see the run timeline, then open the oldest run and press Check under Proof of what ran.`)
+  // the first wake is the run that was cut off: a rerun gets its stored answer back under the same id
+  if (out.wakes[0]) console.log(`\nSee every step, then press Check under Proof of what ran: ${dash}/platform/runs/${agent}/${out.wakes[0]}/`)
   console.log('\noutbox lines per tool (expect 1 each):')
   for (const [name, n] of Object.entries(outboxCounts(outbox))) console.log(`  ${name}: ${n}`)
 }
