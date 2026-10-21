@@ -1,0 +1,93 @@
+{
+  "note": "Produced by engine/canonical.ts canonical() (sorted keys, no whitespace, undefined fields dropped, non-finite numbers throw). input is the JSON value; output is the exact string; sha256 is the hex of that string as UTF-8. Parse input with a JSON parser and compare bytes. -0 prints as 0.",
+  "vectors": [
+    {
+      "name": "sorted keys, no whitespace",
+      "input": {
+        "b": 1,
+        "a": 2
+      },
+      "output": "{\"a\":2,\"b\":1}",
+      "sha256": "d3626ac30a87e6f7a6428233b3c68299976865fa5508e4267c5415c76af7a772"
+    },
+    {
+      "name": "nested objects sorted, array order kept, null kept",
+      "input": {
+        "z": [
+          3,
+          {
+            "y": 1,
+            "x": 2
+          }
+        ],
+        "a": null
+      },
+      "output": "{\"a\":null,\"z\":[3,{\"x\":2,\"y\":1}]}",
+      "sha256": "9fdcb37fa5456110085856672db3c40ba53aad832a7d4949fda2fc006412d08d"
+    },
+    {
+      "name": "strings are JSON.stringify output: escapes, quotes, backslash, newline, non-ASCII, astral",
+      "note": "Keys sort by UTF-16 code unit, as JS Array.sort does with no comparator.",
+      "input": {
+        "k": "é\"\\\n 😀",
+        "ключ": "ü"
+      },
+      "output": "{\"k\":\"é\\\"\\\\\\n 😀\",\"ключ\":\"ü\"}",
+      "sha256": "380266ff02f46e9a78479ae51110d043c303827f5139c47c9418fe36471cef3a"
+    },
+    {
+      "name": "numbers print as JS prints them",
+      "input": [
+        0,
+        -1,
+        1.5,
+        1e+21,
+        1e-7,
+        100,
+        0
+      ],
+      "output": "[0,-1,1.5,1e+21,1e-7,100,0]",
+      "sha256": "9a6ddfcf95c1654a3a4854f9a8b1ab86898a3f5edcfec481dcc7b3eabeb17d26"
+    },
+    {
+      "name": "empty containers and booleans",
+      "input": {
+        "e": {},
+        "l": [],
+        "t": true,
+        "f": false
+      },
+      "output": "{\"e\":{},\"f\":false,\"l\":[],\"t\":true}",
+      "sha256": "f35369ca636aec1d9798510549ea4b473295cc0b4ebf7c3804b0c6a193df25bf"
+    },
+    {
+      "name": "a loop tool_started event as the client sends it (hash its body_hash input: this, minus epoch)",
+      "input": {
+        "type": "tool_started",
+        "key": "m0.t0",
+        "tool": "refund",
+        "args_hash": "ah"
+      },
+      "output": "{\"args_hash\":\"ah\",\"key\":\"m0.t0\",\"tool\":\"refund\",\"type\":\"tool_started\"}",
+      "sha256": "8010ee314aee49d9af5e44b843912fc7a0c2f158f341e3af1b0a7e6a75dd91f4"
+    }
+  ],
+  "body_hash": {
+    "note": "body_hash of a client event = sha256(canonical(event minus \"epoch\")). Both inputs below give the same hash.",
+    "event": {
+      "type": "tool_started",
+      "key": "m0.t0",
+      "tool": "refund",
+      "args_hash": "ah"
+    },
+    "with_epoch": {
+      "type": "tool_started",
+      "key": "m0.t0",
+      "tool": "refund",
+      "args_hash": "ah",
+      "epoch": 7
+    },
+    "sha256": "8010ee314aee49d9af5e44b843912fc7a0c2f158f341e3af1b0a7e6a75dd91f4",
+    "equal": true
+  }
+}

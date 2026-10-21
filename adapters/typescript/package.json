@@ -1,32 +1,53 @@
 {
   "name": "@argentic-labs/client",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Argentic client for TypeScript: durable agent runs that resume without repeating a finished action. Adapters for the Vercel AI SDK and Mastra.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=22" },
-  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "main": "./dist/argentic.js",
-  "bin": { "argentic": "./dist/cli.js" },
+  "bin": {
+    "argentic": "./dist/cli.js"
+  },
   "types": "./dist/argentic.d.ts",
   "exports": {
-    ".": { "types": "./dist/argentic.d.ts", "default": "./dist/argentic.js" },
-    "./ai-sdk": { "types": "./dist/ai-sdk.d.ts", "default": "./dist/ai-sdk.js" },
-    "./mastra": { "types": "./dist/mastra.d.ts", "default": "./dist/mastra.js" }
+    ".": {
+      "types": "./dist/argentic.d.ts",
+      "default": "./dist/argentic.js"
+    },
+    "./ai-sdk": {
+      "types": "./dist/ai-sdk.d.ts",
+      "default": "./dist/ai-sdk.js"
+    },
+    "./mastra": {
+      "types": "./dist/mastra.d.ts",
+      "default": "./dist/mastra.js"
+    }
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-transform-types --no-warnings --test \"test/*.test.ts\""
   },
   "peerDependencies": {
-    "ai": ">=5 <8"
+    "ai": ">=6 <8"
   },
   "peerDependenciesMeta": {
-    "ai": { "optional": true }
+    "ai": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "ai": "^6.0.0",
+    "ai": "^7.0.148",
     "typescript": "^5.7.0"
   },
   "repository": {
@@ -35,6 +56,15 @@
     "directory": "adapters/typescript"
   },
   "homepage": "https://getargentic.com/docs",
-  "keywords": ["agents", "durable", "ai-sdk", "mastra", "argentic"],
-  "publishConfig": { "access": "public", "provenance": true }
+  "keywords": [
+    "agents",
+    "durable",
+    "ai-sdk",
+    "mastra",
+    "argentic"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }
