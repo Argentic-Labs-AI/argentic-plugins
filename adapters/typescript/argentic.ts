@@ -1,6 +1,6 @@
 // Argentic core: a small client and a durable tool loop. No dependencies, Node 22+.
 // Argentic runs the agent loop; your code carries out the tool calls it asks for.
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
@@ -8,6 +8,21 @@ export const defaultBaseUrl = 'https://api.getargentic.com'
 
 /** A wake can run a long time, so a try waits five minutes, as Python's client does. */
 export const defaultTimeoutMs = 300_000
+
+/**
+ * JSON with sorted keys and no undefined fields: the same value always gives the same bytes.
+ * Argentic's server computes the same bytes, and test/canonical-vectors.json is the shared check.
+ */
+export function canonical(v: unknown): string {
+  if (typeof v === 'number' && !Number.isFinite(v)) throw new Error(`canonical: non-finite number ${v}`)
+  if (v === null || v === undefined || typeof v !== 'object') return JSON.stringify(v ?? null)
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`
+  const o = v as Record<string, unknown>
+  return `{${Object.keys(o).filter((k) => o[k] !== undefined).sort()
+    .map((k) => `${JSON.stringify(k)}:${canonical(o[k])}`).join(',')}}`
+}
+
+export const sha256 = (s: string): string => createHash('sha256').update(s).digest('hex')
 
 export interface ModelSpec {
   provider: string
@@ -132,6 +147,8 @@ export interface ClientOptions {
   backoffMs?: number[]
   /** Upper bound on 409 queued retries before giving up. */
   maxQueuedWaits?: number
+  /** keep-your-loop writes: total time spent waiting between retries of one write before it gives up. Default 60000. */
+  writeDeadlineMs?: number
   sleep?: (ms: number) => Promise<void>
 }
 
@@ -145,6 +162,7 @@ export class Argentic {
   private readonly doFetch: typeof fetch
   private readonly backoffMs: number[]
   private readonly maxQueuedWaits: number
+  private readonly writeDeadlineMs: number
   private readonly sleep: (ms: number) => Promise<void>
 
   constructor(opts: ClientOptions = {}) {
@@ -155,6 +173,7 @@ export class Argentic {
     this.doFetch = opts.fetch ?? fetch
     this.backoffMs = opts.backoffMs ?? [1000, 2000, 4000, 8000]
     this.maxQueuedWaits = opts.maxQueuedWaits ?? 60
+    this.writeDeadlineMs = opts.writeDeadlineMs ?? 60_000
     this.sleep = opts.sleep ?? wait
   }
 
@@ -188,6 +207,49 @@ export class Argentic {
       matched: json.matched ?? count((t) => t.match === true),
       mismatched: json.mismatched ?? count((t) => t.match === false),
       unverifiable: json.unverifiable ?? count((t) => t.match === null),
+    }
+  }
+
+  /**
+   * POST JSON for the keep-your-loop routes. The same body is resent after a network error, a 5xx, or a 429 (after its
+   * retry_after), waiting per `backoffMs` (the last wait repeats) until the waits add up to the deadline, then it throws.
+   * Unlike wake, a 409 is not queueing: it is `fenced` or `divergent` and throws at once, like any other 4xx.
+   * Returns the parsed answer.
+   */
+  async postJson(path: string, body: unknown, opts: { deadlineMs?: number } = {}): Promise<any> {
+    const deadline = opts.deadlineMs ?? this.writeDeadlineMs
+    const payload = JSON.stringify(body)
+    const headers = { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' }
+    let failures = 0
+    let waited = 0
+    for (;;) {
+      let res: Response | undefined
+      let netError: unknown
+      try {
+        res = await this.doFetch(this.baseUrl + path, { method: 'POST', headers, body: payload })
+      } catch (e) {
+        netError = e
+      }
+      if (res && res.ok) return res.json()
+      let delay: number
+      if (res && res.status === 429) {
+        const info = (await res.json().catch(() => ({}))) as { retry_after?: number }
+        delay = Math.min(Math.max(info.retry_after ?? 1, 0), 30) * 1000
+      } else if (res && res.status < 500) {
+        const info = await res.json().catch(() => undefined)
+        const { error: code, detail } = (info ?? {}) as { error?: string; detail?: unknown }
+        const more = detail === undefined ? '' : `: ${typeof detail === 'string' ? detail : JSON.stringify(detail)}`
+        throw new ArgenticError(`${res.status} ${code ?? res.statusText}${more}`, res.status, info)
+      } else {
+        delay = this.backoffMs[Math.min(failures, this.backoffMs.length - 1)] ?? 1000
+      }
+      failures++
+      if (waited + delay > deadline) {
+        const what = res ? `HTTP ${res.status}` : String((netError as Error)?.message ?? netError)
+        throw new ArgenticError(`gave up after ${failures} tries over ${waited} ms: ${what}`, res?.status)
+      }
+      waited += delay
+      await this.sleep(delay)
     }
   }
 

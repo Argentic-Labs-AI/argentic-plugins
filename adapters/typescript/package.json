@@ -1,6 +1,6 @@
 {
   "name": "@argentic-labs/client",
-  "version": "0.1.6",
+  "version": "0.2.0",
   "description": "Argentic client for TypeScript: durable agent runs that resume without repeating a finished action. Adapters for the Vercel AI SDK and Mastra.",
   "license": "MIT",
   "type": "module",
@@ -17,7 +17,8 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json",
-    "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --experimental-transform-types --disable-warning=ExperimentalWarning --test \"test/*.test.ts\"",
     "prepack": "npm run build"
   },
   "peerDependencies": {
@@ -28,7 +29,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "ai": "^6.0.0",
+    "ai": "^7.0.148",
     "typescript": "^5.7.0"
   },
   "repository": {

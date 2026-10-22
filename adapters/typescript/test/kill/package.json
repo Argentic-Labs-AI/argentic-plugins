@@ -1,0 +1,9 @@
+{
+  "name": "argentic-kill-test",
+  "private": true,
+  "type": "module",
+  "description": "Kill test for keep-your-loop. Only the live mode and case 6b need the dependency: npm install here (node_modules is not committed).",
+  "devDependencies": {
+    "@ai-sdk/openai-compatible": "^3.0.75"
+  }
+}
