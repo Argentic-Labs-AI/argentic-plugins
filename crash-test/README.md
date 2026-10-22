@@ -4,13 +4,30 @@ Kill your agent at each tool call, restart it, and see which side effects happen
 
 It works on any agent in any language, with or without Argentic. It runs your command, points your tools at local stand-ins (HTTP, a Stripe-shaped payments API, SMTP, files, SQLite rows), and kills the process at every effect they see and between a model reply and the tool call that follows it. It only watches what arrives. It never looks inside your agent.
 
-Version 0.1. Node 20 or newer, no dependencies, no keys, no network. It is not on npm yet, so you run it from this repo.
+Version 0.1. Node 20 or newer on macOS or Linux (Windows through WSL). No dependencies, no keys, no network, no account.
 
-## Quickstart (5 minutes)
+## Quickstart (30 seconds)
+
+```
+npx @argentic-labs/crash-test --demo
+```
+
+That runs a small agent bundled with the tool: it refunds an order, emails the customer and closes the ticket, with no safeguards. The tool kills it at each of those actions, restarts it, and shows what landed twice. You will see the refund go out twice. The exit code is 1.
+
+Now your own agent. Point its tool calls at `$CRASHTEST_SINK_URL` (a call to `https://api.example.com/refund` becomes `$CRASHTEST_SINK_URL/refund`) and put its command after the `--`:
+
+```
+npx @argentic-labs/crash-test -- node my-agent.js
+npx @argentic-labs/crash-test -- python3 agent.py
+```
+
+Your agent must exit 0 when its work is done, so the tool can tell a finished restart from a broken one. It does not matter what language or framework it is written in, or whether it has anything to do with Argentic. The rest of this page covers fixing what it finds, other kinds of effects, and CI.
+
+## Walkthrough (5 minutes)
 
 You need Node 20+ and git. The examples use a scripted model, so nothing here calls a paid model or needs an account.
 
-### 1. Get it
+### 1. Get the examples
 
 ```
 git clone https://github.com/Argentic-Labs-AI/argentic-plugins
@@ -58,21 +75,20 @@ The same agent now fails at every kill point. The verdict follows the receiver, 
 
 ### 4. Run it on your agent
 
-Point your agent's tool endpoints at the address in `$CRASHTEST_SINK_URL` (a tool that posts to `https://api.example.com/refund` posts to `$CRASHTEST_SINK_URL/refund` instead) and put your command after the `--`:
+See the quickstart above: point your tool calls at `$CRASHTEST_SINK_URL` and put your command after the `--`. If your agent keeps state in its working directory, add `--copy-cwd` so trials do not share it:
 
 ```
-node crash-test.mjs -- node my-agent.js
-node crash-test.mjs --copy-cwd -- python agent.py
+node crash-test.mjs --copy-cwd -- python3 agent.py
 ```
 
-Your agent must exit 0 when its work is done, so the tool can tell a finished restart from a broken one. If it keeps state in its working directory, add `--copy-cwd`. Other kinds of effects (email, files, a database, a model API) are in the sections below.
+Other kinds of effects (email, files, a database, a model API) are in the sections below.
 
 ### 5. Use it in CI
 
 The exit code is the verdict, and `--json` gives you the details:
 
 ```
-node crash-test.mjs --json report.json -- node my-agent.js
+npx @argentic-labs/crash-test --json report.json -- node my-agent.js
 ```
 
 | Exit code | Meaning |
@@ -81,19 +97,13 @@ node crash-test.mjs --json report.json -- node my-agent.js
 | 1 | An action landed twice or never. |
 | 2 | The setup is wrong, or a trial could not finish (the agent crashed or timed out on restart). |
 
-`--json -` writes the JSON to stdout and the readable report to stderr, so you can pipe it: `crash-test --json - -- node my-agent.js 2>/dev/null | jq .summary`. `--md report.md` writes a Markdown version.
+`--json -` writes the JSON to stdout and the readable report to stderr, so you can pipe it: `npx @argentic-labs/crash-test --json - -- node my-agent.js 2>/dev/null | jq .summary`. `--md report.md` writes a Markdown version.
 
 The report has the verdict for each kill point, a table with one row per action (how many times it ran in the clean run, the worst case, in how many trials it repeated), and a summary. When something repeated it ends with one line about Argentic; `--no-promo` removes it.
 
 Two more agents that need no install: `node crash-test.mjs -- node examples/plain-agent.mjs` fails, and `keyed-agent.mjs` passes.
 
-## Run it on your agent
-
-Point your agent's tool endpoints at the sinks the tool starts, then:
-
-```
-node crash-test.mjs -- node my-agent.js
-```
+## Environment your agent gets
 
 Anything after `--` is your agent's command. Your agent gets these environment variables:
 
@@ -157,7 +167,8 @@ An LLM agent may make different calls on each run. Three options handle that:
 |---|---|
 | `ai-sdk/naive.mjs` | A Vercel AI SDK agent with plain tools. Repeats finished actions after a kill. Needs `npm install` in `examples/ai-sdk`. |
 | `ai-sdk/safe.mjs` | The same agent with an `Idempotency-Key` per action. Clean when the receiver honours the key. To use a real model, replace `scriptedModel()` with your provider's model. |
-| `plain-agent.mjs` | A plain loop with no checkpoints. Every kill point duplicates finished actions. |
+| `plain-agent.mjs` | A plain loop with no checkpoints. Every kill point duplicates finished actions. This is what `--demo` runs. |
+| `python-agent.py` | The same plain loop in Python, standard library only. Shows that the language does not matter. |
 | `checkpoint-agent.mjs` | A progress file, no keys. Still duplicates the cut-off action and the one that landed just before the file write. |
 | `keyed-agent.mjs` | Stable keys and a progress file. Clean when the receiver honours the key. |
 | `payments-agent.mjs` | Refunds through the Stripe-shaped API. `PAY_KEYED=1` sends the key. |
@@ -167,15 +178,16 @@ An LLM agent may make different calls on each run. Three options handle that:
 | `db-agent.mjs` | The effect is a SQLite row. `DB_KEYED=1` makes the database refuse the second copy. Run with `node --no-warnings`. |
 | `llm-agent.mjs` | A real tool-calling loop against an OpenAI-compatible API. `LLM_KEYED=1` makes it careful. Use `--upstream`. |
 | `lossy-agent.mjs` | Assumes the earlier run finished. Reports lost actions. |
-| `argentic-agent.ts` | The Argentic quickstart agent. Needs `ARGENTIC_API_KEY`, `MODEL_KEY`, and `node --experimental-transform-types`. |
+| `argentic-agent.ts` | The Argentic quickstart agent (in the repo, not in the npm package). Needs `ARGENTIC_API_KEY`, `MODEL_KEY`, and `node --experimental-transform-types`. |
 
-`npm test` (or `node test/self-test.mjs`) runs thirty-three cases and checks that the verdict follows the agent, the exit codes, and the JSON report. It needs no keys and no network; it uses a scripted model. The AI SDK cases run once you have run `npm install` in `examples/ai-sdk`, and are skipped with a note until then.
+`npm test` (or `node test/self-test.mjs`) runs thirty-six cases and checks that the verdict follows the agent, the exit codes, and the JSON report. It needs no keys and no network; it uses a scripted model. The AI SDK cases run once you have run `npm install` in `examples/ai-sdk`, and are skipped with a note until then.
 
 ## Limits
 
 - Files are read as append-only logs (a rewritten file counts as new lines), and rows are insert-only. An update or delete is not seen.
 - Other databases are not supported yet. SQLite only.
 - Kill points follow the sink's call order. An agent that fires calls in parallel can reach the same point in a different order on another run.
-- Between a model reply and a tool call it can only kill at calls that go through `--upstream`. A model called from inside another service (the way Argentic's engine calls one) is reached only at the call your agent makes to that service.
-- Live-model results are in the results page draft. The rest of the examples use fixed plans or a scripted model.
+- Between a model reply and a tool call it can only kill at calls that go through `--upstream`. A model called from inside another service is reached only at the call your agent makes to that service.
+- Most examples use fixed plans or a scripted model. `llm-agent.mjs` is the one that calls a real model.
 - If your agent keeps state in its working directory, use `--copy-cwd` so trials do not share it.
+- Windows is not supported directly (the agent command runs through `sh`); use WSL.
