@@ -3,15 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "One file: a support agent that sends one email. Ctrl-C it, run it again, and it does not send twice. Vercel AI SDK tools on Argentic.",
+  "description": "One file: a support agent that sends one email. Ctrl-C it, run it again, and it does not send twice. Your Vercel AI SDK loop, journaled by Argentic.",
   "scripts": {
     "start": "tsx index.ts",
     "kill-demo": "tsx index.ts --fresh --kill-after 2",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@argentic-labs/client": "^0.1.3",
-    "ai": "^6.0.0",
+    "@ai-sdk/openai-compatible": "^3.0.75",
+    "@argentic-labs/client": "^0.2.0",
+    "ai": "^7.0.148",
     "zod": "^4.0.0"
   },
   "devDependencies": {
