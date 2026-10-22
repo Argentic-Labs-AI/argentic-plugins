@@ -614,7 +614,7 @@ export class DurableRun {
   /** Mark the run done. Also the place a stop that happened inside a tool surfaces if the SDK swallowed it. */
   async finish(opts: { reply?: string } = {}): Promise<void> {
     this.assertRunning()
-    const event: Record<string, unknown> = { type: 'run_finished', key: 'run' }
+    const event: Record<string, unknown> = { type: 'run_finished' }
     if (opts.reply !== undefined) event.reply = opts.reply
     await this.write(event)
     this.finished = true

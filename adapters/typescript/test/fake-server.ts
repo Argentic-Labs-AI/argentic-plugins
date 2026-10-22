@@ -78,6 +78,8 @@ export class FakeServer {
       const hasModelStep = (key: string) => key && has('loop.model_step', key.split('.')[0]!)
       for (const ev of body.events as any[]) {
         const { type, ...rest } = ev
+        // The hosted schema is strict: run_finished carries only { reply? }, its key is implicit.
+        if (type === 'run_finished' && 'key' in ev) return json(400, { error: 'bad_request', detail: ["events.0.: Unrecognized key(s) in object: 'key'"] })
         const key: string = type === 'run_finished' ? 'run' : ev.key
         const kind = `loop.${type}`
         const bodyHash = sha256(canonical(ev))
