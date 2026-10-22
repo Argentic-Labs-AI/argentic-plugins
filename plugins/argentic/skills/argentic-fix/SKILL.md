@@ -10,7 +10,7 @@ Resuming a run spends money on the user's model key. Find the cause first, say i
 ## Steps
 
 1. Get the wake. If you do not have the wake id, call `argentic_wakes` with `state: "open"` for the agent. Then call `argentic_wake_get` and read its `status`.
-2. Read the journal. Call `argentic_journal` for that agent, filtered to the wake if the tool allows it, and look at the last 20 or so events: the tool calls, their results and the model calls. Check the journal's own kind names rather than assuming them. If unsure, read "the last events" and say what they show.
+2. Read the journal. Call `argentic_journal` for that agent with `wake` set to the wake id, and look at the last 20 or so events. The kinds are `trigger`, `turn_started`, `model_reply`, `tool_call` and `tool_result`; pass `kind: "tool_call,tool_result"` to see only the tool steps, and `bodies: true` when you need what a tool returned.
 3. State the cause in one sentence, with the evidence. Example: "The run stopped on `spend_cap`: it had spent $0.05 of a $0.05 limit after 6 turns."
 4. Propose the fix from the table below.
 5. Resume only after the user says yes. Use `argentic_resume`. It needs the model key on the connection.
