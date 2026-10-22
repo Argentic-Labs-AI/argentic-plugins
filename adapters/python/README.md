@@ -2,18 +2,19 @@
 
 Argentic client for Python. Argentic runs your agent's loop: it calls the model, keeps the journal, and hands each tool call back to your code as an action with a stable key. Kill your process mid-run and start it again: it resumes without repeating a finished action, and the run keeps proof of what ran.
 
-The package is the client and `run_durable`, with no dependencies (Python 3.10+), plus two adapters that take the tools you already wrote:
+The package is the client and `run_durable`, with no dependencies (Python 3.10+), plus three adapters that take the tools you already wrote:
 
 - `argentic_labs.langchain`: LangChain and LangGraph tools. Needs `langchain-core`.
 - `argentic_labs.openai_agents`: OpenAI Agents SDK `@function_tool` tools and an `Agent`'s instructions. Needs `openai-agents`. Nothing here runs `Runner`.
+- `argentic_labs.pydantic_ai`: Pydantic AI tools (`Tool` objects or plain functions). Needs `pydantic-ai-slim`. Nothing here runs `Agent.run`.
 
-Nothing in this package runs LangChain's, LangGraph's or the Agents SDK's loop. The TypeScript client, `@argentic-labs/client` on npm, does the same job for the Vercel AI SDK and Mastra, and the two read each other's ledger files.
+Nothing in this package runs LangChain's, LangGraph's, Pydantic AI's or the Agents SDK's loop. The TypeScript client, `@argentic-labs/client` on npm, does the same job for the Vercel AI SDK and Mastra, and the two read each other's ledger files.
 
 ## Install
 
 ```
 pip install argentic-labs
-pip install "argentic-labs[langchain]"      # or [openai-agents]
+pip install "argentic-labs[langchain]"      # or [openai-agents], [pydantic-ai]
 ```
 
 Straight from GitHub, if you want the latest code or a pinned tag (swap `main` for a tag such as `npm-v0.1.4`):

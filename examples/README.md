@@ -9,8 +9,9 @@ Argentic runs your agent's loop. You keep your framework's tool definitions and 
 | [langchain](langchain/) | LangChain / LangGraph `@tool` | Python |
 | [openai-agents](openai-agents/) | OpenAI Agents SDK `@function_tool` | Python |
 | [mastra](mastra/) | Mastra `createTool()` | TypeScript |
+| [pydantic-ai](pydantic-ai/) | Pydantic AI tool functions | Python |
 
-All five tell the same story: refund an order, email the customer, close the ticket. The first run kills itself right after the refund. The second run skips the refund, finishes the rest and checks each wake against the journal. Then you open the run timeline in the dashboard and press **Check** under **Proof of what ran**.
+All six tell the same story: refund an order, email the customer, close the ticket. The first run kills itself right after the refund. The second run skips the refund, finishes the rest and checks each wake against the journal. Then you open the run timeline in the dashboard and press **Check** under **Proof of what ran**.
 
 Just want to see it? `npx @argentic-labs/client demo` runs the same story with nothing to clone (see the [repo README](../README.md#kill-it-mid-run-2-minutes)), and so does `python -m argentic_labs demo` once the Python package is installed. No framework? Start with [core](core/). The core files in [`../adapters`](../adapters/) work on their own: `runDurable` (TypeScript) and `run_durable` (Python) take plain tools with a JSON schema and a handler.
 
