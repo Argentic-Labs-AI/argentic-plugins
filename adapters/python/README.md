@@ -82,6 +82,29 @@ Run it again after a crash and it resumes. `model` defaults to `FREE_MODEL`; `mo
 
 Hooks on `run_durable`: `on_wake_start(step)` just before each wake is sent, `on_wake(step, wake_id, status, replayed)` after each answer, and `on_action(seq, tool, result, fresh)` for every action (`fresh` is False for one the ledger says already finished).
 
+## Waking on a schedule (handle_due)
+
+Beta, and off by default on the hosted API. When an agent falls due (a plan's `wake_at`, a schedule, a timer or a hook event), Argentic POSTs a signed notice to the `wake_url` you registered. The notice names the agent and why it is due and carries no agent content and no model key. `handle_due` checks the signature and the time, then wakes the agent with `fire_due` on your own model key.
+
+The secret (`whsec_...`) is shown once, when you register the `wake_url`. Store it like a password, for example as `ARGENTIC_WEBHOOK_SECRET`. The model key stays on your server: set `MODEL_KEY` there, as for any other wake.
+
+```python
+from fastapi import Body, FastAPI, HTTPException, Request
+from argentic_labs import WebhookVerificationError, handle_due
+
+app = FastAPI()
+
+@app.post("/argentic/due")
+def due(request: Request, body: bytes = Body()):  # the raw bytes, not parsed JSON
+    try:
+        notice, wake = handle_due(body, request.headers)  # reads ARGENTIC_API_KEY, MODEL_KEY, ARGENTIC_WEBHOOK_SECRET
+    except WebhookVerificationError as e:
+        raise HTTPException(400 if e.code == "bad_body" else 500 if e.code == "bad_secret" else 401, e.code)
+    return {"agent": notice.agent, "wake_id": wake.wake_id}
+```
+
+`handle_due(body, headers, secret=..., client=..., model=..., tolerance_seconds=300)` takes the raw body (`bytes` or `str`) and any mapping of headers, looked up without regard to case, so Flask's `request.get_data()` and `request.headers` work too. It returns `(notice, wake)` and raises `WebhookVerificationError` (with a `.code`) before any call is made. `verify_due(body, headers)` only verifies and parses, and returns `(notice, webhook_id)`, so you can queue the notice and wake later. The wake uses the `webhook-id` as its idempotency key, so a notice delivered twice replays the first wake instead of waking twice. Timestamps more than 300 seconds off are refused. A failed wake raises `ArgenticError`; let it return a 5xx so the notice is sent again.
+
 ## Settings
 
 | Variable | What it is |
