@@ -16,6 +16,7 @@ const hasSqlite = await import('node:sqlite').then(() => true, () => false)
 const model = await startFakeModel()
 // The AI SDK examples need `npm install` in examples/ai-sdk (the tests never touch the network, so they do not install it themselves).
 const hasAiSdk = existsSync(join(root, 'examples', 'ai-sdk', 'node_modules', 'ai'))
+const hasPython = await new Promise((ok) => spawn('python3', ['--version']).on('error', () => ok(false)).on('exit', (c) => ok(c === 0)))
 const aiSdk = (f) => ['node', join(root, 'examples', 'ai-sdk', f)]
 const scratch = mkdtempSync(join(tmpdir(), 'crash-test-selftest-'))
 
@@ -47,6 +48,9 @@ const cases = [
         { name: 'the same AI SDK agent with an Idempotency-Key per action passes', cmd: aiSdk('safe.mjs'), exit: 0, text: /duplicated effect: .*0/ },
         { name: 'the safe AI SDK agent fails against a receiver that ignores keys', cmd: aiSdk('safe.mjs'), args: ['--no-dedupe'], exit: 1, text: /landed 2×/ },
       ]
+    : []),
+  ...(hasPython
+    ? [{ name: 'a plain Python agent is caught too (any language works)', cmd: ['python3', ex('python-agent.py')], exit: 1, text: /POST \/refund_order landed 2×/ }]
     : []),
   { name: 'report has a by-action table', cmd: ['node', ex('plain-agent.mjs')], exit: 1, text: /By action\n\s+Action\s+Clean run\s+Worst\s+Repeated in\s+Verdict\n\s+POST \/refund_order\s+1×\s+2×\s+6 of 6\s+REPEATED/ },
   { name: 'kill between a model reply and its tool call: a plain LLM loop repeats the refund', cmd: ['node', ex('llm-agent.mjs')], args: ['--upstream', `model=${model.url}`, '--when', 'upstream'], exit: 1, text: /after reply.*POST \/refund_order landed 2×/ },
@@ -83,6 +87,8 @@ const cliCases = [
   { name: 'a failing report ends with the Argentic line', run: () => cli_(['--', ...cmdOf('plain-agent.mjs')]), check: (r) => r.status === 1 && r.stdout.trimEnd().split('\n').pop().startsWith('Or run it on Argentic') },
   { name: '--no-promo removes the Argentic line', run: () => cli_(['--no-promo', '--', ...cmdOf('plain-agent.mjs')]), check: (r) => r.status === 1 && !/Argentic/.test(r.stdout) },
   { name: 'a passing report has no Argentic line', run: () => cli_(['--', ...cmdOf('keyed-agent.mjs')]), check: (r) => r.status === 0 && !/Argentic/.test(r.stdout) },
+  { name: '--demo runs the bundled agent, catches it, and points to the next step', run: () => cli_(['--demo']), check: (r) => r.status === 1 && /landed 2×/.test(r.stdout) && /bundled demo agent/.test(r.stdout) && /Or run it on Argentic/.test(r.stdout) },
+  { name: '--demo with a command is a setup error (exit 2)', run: () => cli_(['--demo', '--', 'true']), check: (r) => r.status === 2 && /--demo runs the bundled agent/.test(r.stderr) },
   {
     name: '--json <file> writes a report with a summary, per-action rows and the exit code',
     run: async () => ({ ...(await cli_(['--no-promo', '--json', jsonFile, '--', ...cmdOf('plain-agent.mjs')])), json: JSON.parse(readFileSync(jsonFile, 'utf8')) }),

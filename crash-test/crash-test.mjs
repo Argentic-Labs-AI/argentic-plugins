@@ -16,7 +16,9 @@ const usage = `crash-test: kill an agent at each tool call, restart it, and see 
 
 Usage:
   crash-test [options] -- <command that runs your agent>
+  crash-test --demo
 
+  crash-test --demo                  see it catch a bundled agent that double-sends (no setup)
   crash-test -- node my-agent.js
   crash-test --when mid,pause --kill-at 1,3 -- python agent.py
 
@@ -61,6 +63,7 @@ Options:
   --md <file>            write the report as Markdown
   --keep                 keep the per-trial folders and agent logs
   --verbose              show the agent's output
+  --demo                 run the bundled example agent (a plain loop with no safeguards) instead of your command
   --no-promo             leave the closing line off the report
   -v, --version
   -h, --help
@@ -91,6 +94,7 @@ const { values: opt, positionals } = parseArgs({
     keep: { type: 'boolean', default: false },
     verbose: { type: 'boolean', default: false },
     'no-promo': { type: 'boolean', default: false },
+    demo: { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
     version: { type: 'boolean', short: 'v', default: false },
   },
@@ -104,9 +108,10 @@ if (opt.help) {
   console.log(usage)
   process.exit(0)
 }
+const here = fileURLToPath(new URL('.', import.meta.url))
 const version = (() => {
   try {
-    return JSON.parse(readFileSync(join(fileURLToPath(new URL('.', import.meta.url)), 'package.json'), 'utf8')).version
+    return JSON.parse(readFileSync(join(here, 'package.json'), 'utf8')).version
   } catch {
     return 'unknown'
   }
@@ -115,8 +120,9 @@ if (opt.version) {
   console.log(version)
   process.exit(0)
 }
-const command = positionals.join(' ').trim()
-if (!command) fail('no agent command given. Put it after "--".')
+if (opt.demo && positionals.length) fail('--demo runs the bundled agent; leave the command off, or drop --demo to test your own')
+const command = opt.demo ? `node '${join(here, 'examples', 'plain-agent.mjs').replace(/'/g, `'\\''`)}'` : positionals.join(' ').trim()
+if (!command) fail('no agent command given. Put it after "--", or try --demo.')
 const upstreams = new Map()
 for (const u of opt.upstream) {
   const m = /^([A-Za-z0-9_-]+)=(https?:\/\/.+)$/.exec(u)
@@ -819,6 +825,10 @@ async function main() {
   if (failing && !opt['no-promo']) {
     out()
     out(dim('Or run it on Argentic: a killed agent resumes without repeating a finished action. https://getargentic.com'))
+  }
+  if (opt.demo) {
+    out()
+    out(dim('That was a bundled demo agent. To test yours, point its tool calls at $CRASHTEST_SINK_URL and run: crash-test -- <your command>'))
   }
 
   const report = {

@@ -1,16 +1,47 @@
 {
   "name": "@argentic-labs/crash-test",
   "version": "0.1.0",
-  "private": true,
   "description": "Kill any agent at each tool call, restart it, and see which side effects happened twice. Works on any framework.",
   "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=20" },
-  "bin": { "crash-test": "./crash-test.mjs" },
-  "files": ["crash-test.mjs", "examples", "README.md", "LICENSE"],
-  "scripts": { "test": "node test/self-test.mjs" },
-  "repository": { "type": "git", "url": "git+https://github.com/Argentic-Labs-AI/argentic-plugins.git", "directory": "crash-test" },
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "crash-test": "./crash-test.mjs"
+  },
+  "files": [
+    "crash-test.mjs",
+    "examples",
+    "!examples/argentic-agent.ts",
+    "!examples/ai-sdk/package-lock.json",
+    "!examples/ai-sdk/node_modules",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test/self-test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Argentic-Labs-AI/argentic-plugins.git",
+    "directory": "crash-test"
+  },
   "homepage": "https://getargentic.com",
-  "keywords": ["agents", "testing", "idempotency", "crash", "llm"],
-  "publishConfig": { "access": "public" }
+  "keywords": [
+    "agents",
+    "testing",
+    "idempotency",
+    "crash",
+    "llm",
+    "chaos",
+    "ai-agents",
+    "cli"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bugs": {
+    "url": "https://github.com/Argentic-Labs-AI/argentic-plugins/issues"
+  }
 }
