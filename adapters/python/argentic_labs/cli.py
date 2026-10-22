@@ -208,7 +208,7 @@ def demo(argv: list[str], client: Argentic | None = None, env: dict[str, str] | 
     dash = (e.get("ARGENTIC_DASHBOARD_URL") or "https://getargentic.com").rstrip("/")
     out()
     out(f"See it in the dashboard: {dash}/platform/ {dim('->')} Runs {dim('->')} {agent}")
-    out(dim("Open the oldest run (the one you killed) and press Check under Proof of what ran."))
+    out(dim("Open the oldest run (the one you killed) and press Check prompts under Proof of what ran."))
     out(dim("Start over with --fresh."))
     return 0 if clean else 1
 
