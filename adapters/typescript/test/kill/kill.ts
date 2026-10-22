@@ -35,12 +35,12 @@ const scrub = (s: string) => (secret ? s.replaceAll(secret, '***') : s)
 // ---------------------------------------------------------------- hosted server
 let server: ChildProcess | undefined
 let apiKey = ''
+/** The hosted process gets an allowlisted environment (like `env -i`): no Autumn, Resend or model keys, so it cannot reach them. */
+const ALLOW = ['PATH', 'HOME', 'https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY', 'no_proxy', 'NO_PROXY', 'NODE_EXTRA_CA_CERTS', 'SSL_CERT_FILE']
 const hostedEnv = () => {
-  const env = { ...process.env, EXTERNAL_LOOPS: '1', PORT: String(PORT), DATABASE_URL: DB, LOOP_RATE_PER_MIN: '100000' } as Record<string, string | undefined>
-  delete env.AUTUMN_SECRET_KEY
-  delete env.RESEND_API_KEY
-  delete env.NV_API_KEY
-  return env as NodeJS.ProcessEnv
+  const env: Record<string, string> = {}
+  for (const k of ALLOW) if (process.env[k] !== undefined) env[k] = process.env[k]!
+  return { ...env, EXTERNAL_LOOPS: '1', PORT: String(PORT), DATABASE_URL: DB, LOOP_RATE_PER_MIN: '100000' } as NodeJS.ProcessEnv
 }
 
 async function prepareDatabase(): Promise<void> {
