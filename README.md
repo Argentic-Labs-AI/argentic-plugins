@@ -28,6 +28,10 @@ A small support agent refunds an order, emails the customer and closes the ticke
 
 `--fresh` starts a new run. `--kill-after 1` kills it for you if you'd rather not race the keyboard. The source is [`adapters/typescript/cli.ts`](adapters/typescript/cli.ts).
 
+## Crash-test any agent (5 minutes)
+
+[`crash-test/`](crash-test/) is a small open tool that kills an agent at each tool call, restarts it, and reports which actions ran twice. It works on agents built on any framework, with or without Argentic, and needs no keys. Start with the [quickstart](crash-test/README.md#quickstart-5-minutes).
+
 ## Claude Code
 
 ```
