@@ -1,0 +1,14 @@
+{
+  "name": "crash-test-ai-sdk-examples",
+  "private": true,
+  "type": "module",
+  "description": "A support agent built on the Vercel AI SDK, one version that repeats actions after a crash and one that does not. Run them under crash-test.",
+  "scripts": {
+    "naive": "node ../../crash-test.mjs -- node naive.mjs",
+    "safe": "node ../../crash-test.mjs -- node safe.mjs"
+  },
+  "dependencies": {
+    "ai": "6.0.311",
+    "zod": "^4.0.0"
+  }
+}

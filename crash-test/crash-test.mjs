@@ -6,9 +6,10 @@ import http from 'node:http'
 import net from 'node:net'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
-import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, closeSync, readdirSync, readSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, openSync, closeSync, readdirSync, readFileSync, readSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
 const usage = `crash-test: kill an agent at each tool call, restart it, and see which side effects repeated.
@@ -56,11 +57,12 @@ Options:
   --copy-cwd             run every trial in a fresh copy of --cwd (skips node_modules and .git)
   --timeout <seconds>    limit for each agent process (default: 120)
   --jobs <n>             trials in parallel (default: 1)
-  --json <file>          write the full report as JSON
+  --json <file|->        write the full report as JSON. With "-" the JSON goes to stdout and the readable report to stderr.
   --md <file>            write the report as Markdown
   --keep                 keep the per-trial folders and agent logs
   --verbose              show the agent's output
   --no-promo             leave the closing line off the report
+  -v, --version
   -h, --help
 
 Exit status: 0 nothing duplicated or lost, 1 a side effect landed twice or never, 2 a trial could not finish or the setup is wrong.
@@ -90,6 +92,7 @@ const { values: opt, positionals } = parseArgs({
     verbose: { type: 'boolean', default: false },
     'no-promo': { type: 'boolean', default: false },
     help: { type: 'boolean', short: 'h', default: false },
+    version: { type: 'boolean', short: 'v', default: false },
   },
 })
 
@@ -99,6 +102,17 @@ const fail = (msg) => {
 }
 if (opt.help) {
   console.log(usage)
+  process.exit(0)
+}
+const version = (() => {
+  try {
+    return JSON.parse(readFileSync(join(fileURLToPath(new URL('.', import.meta.url)), 'package.json'), 'utf8')).version
+  } catch {
+    return 'unknown'
+  }
+})()
+if (opt.version) {
+  console.log(version)
   process.exit(0)
 }
 const command = positionals.join(' ').trim()
@@ -117,6 +131,8 @@ const upstreamRpm = Math.max(0, Number(opt['upstream-rpm']) || 0)
 const trialGapMs = Math.max(0, Number(opt['trial-gap']) || 0) * 1000
 if (opt.identity !== 'route' && opt.identity !== 'body') fail('--identity takes route or body')
 const timeoutMs = Number(opt.timeout) * 1000
+for (const f of ['jobs', 'samples', 'upstream-rpm', 'trial-gap', 'takeover-after'])
+  if (!Number.isFinite(Number(opt[f])) || Number(opt[f]) < 0) fail(`--${f} must be a number, got "${opt[f]}"`)
 const jobs = Math.max(1, Number(opt.jobs) || 1)
 const samples = Math.max(1, Number(opt.samples) || 1)
 const takeoverMs = Math.max(0, Number(opt['takeover-after']) || 0) * 1000
@@ -125,14 +141,15 @@ if (!(timeoutMs > 0)) fail('--timeout must be a number of seconds')
 const agentCwd = resolve(opt.cwd ?? process.cwd())
 const dedupe = !opt['no-dedupe']
 
-const color = process.stdout.isTTY && !process.env.NO_COLOR
+const color = (opt.json === '-' ? process.stderr : process.stdout).isTTY && !process.env.NO_COLOR
 const paint = (code) => (s) => (color ? `\x1b[${code}m${s}\x1b[0m` : s)
 const dim = paint('2')
 const bold = paint('1')
 const green = paint('32')
 const red = paint('31')
 const yellow = paint('33')
-const out = (s = '') => process.stdout.write(s + '\n')
+const jsonToStdout = opt.json === '-'
+const out = (s = '') => (jsonToStdout ? process.stderr : process.stdout).write(s + '\n')
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const hash = (s) => createHash('sha256').update(s).digest('hex').slice(0, 10)
 
@@ -504,7 +521,7 @@ async function startSinks({ spec, kill, pause, filesDir, dbPath }) {
 /** Run the agent command in its own process group so a kill takes its children too. */
 function runAgent({ cwd, env, logPath }) {
   const fd = opt.verbose ? 'inherit' : openSync(logPath, 'a')
-  const child = spawn('sh', ['-c', command], { cwd, env, detached: true, stdio: opt.verbose ? 'inherit' : ['ignore', fd, fd] })
+  const child = spawn('sh', ['-c', command], { cwd, env, detached: true, stdio: opt.verbose ? (jsonToStdout ? ['ignore', 2, 2] : 'inherit') : ['ignore', fd, fd] })
   const signal = (sig) => {
     try {
       process.kill(-child.pid, sig)
@@ -765,6 +782,20 @@ async function main() {
     out(`${head} ${detail.length ? detail.join('; ') : dim('every action landed once')}`)
   }
 
+  const actions = summarizeActions(expected, results)
+  if (actions.length) {
+    out()
+    out(bold('By action'))
+    const w = Math.max(6, ...actions.map((a) => a.action.length))
+    const cell = (a) => (a.repeatedIn ? 'REPEATED' : a.lostIn ? 'LOST' : a.replayedIn ? 'ok (same-key replays)' : 'ok')
+    out(`  ${'Action'.padEnd(w)}  ${'Clean run'.padEnd(9)}  ${'Worst'.padEnd(5)}  ${'Repeated in'.padEnd(11)}  Verdict`)
+    for (const a of actions) {
+      const verdict = cell(a)
+      const painted = a.repeatedIn || a.lostIn ? red(verdict) : green(verdict)
+      out(`  ${a.action.padEnd(w)}  ${`${a.expected}×`.padEnd(9)}  ${`${a.worst}×`.padEnd(5)}  ${`${a.repeatedIn} of ${results.length}`.padEnd(11)}  ${painted}`)
+    }
+  }
+
   const count = (v) => results.filter((r) => r.verdict === v).length
   const dup = results.filter((r) => r.verdict.startsWith('duplicated')).length
   const lost = results.filter((r) => r.verdict.endsWith('lost')).length
@@ -781,13 +812,18 @@ async function main() {
   if (diverged) out(`  trials where the path diverged:  ${yellow(diverged)} ${dim('(the agent chose other calls than the clean run; lost work is not checked there)')}`)
   if (incomplete) out(`  trials that did not finish:      ${yellow(incomplete)}`)
   const failing = dup + lost > 0
+  if (dup > 0) {
+    out()
+    out(dim('A repeated action is harmless only if the receiver can tell it has seen it before. Send a stable Idempotency-Key with each action, built from the thing it acts on (the order, the ticket), and make the receiver honour it.'))
+  }
   if (failing && !opt['no-promo']) {
     out()
-    out(dim('A tool call is only safe to repeat if the thing receiving it can tell it has seen it before. Argentic (https://getargentic.com) is built to hand every action a stable key and skip the ones that finished. This test works on any agent, with or without it.'))
+    out(dim('Or run it on Argentic: a killed agent resumes without repeating a finished action. https://getargentic.com'))
   }
 
   const report = {
     tool: 'crash-test',
+    version,
     command,
     identity: opt.identity,
     intent: intentFields,
@@ -796,6 +832,8 @@ async function main() {
     upstreams: [...upstreams.keys()],
     cleanRun: calls.map((a) => ({ n: a.n, action: label(a), key: a.key })),
     summary: { planned: plan.length, exercised, duplicated: dup, lost, replayed, diverged, incomplete },
+    actions,
+    exitCode: failing ? 1 : incomplete ? 2 : 0,
     trials: results.map((r) => ({
       kind: r.kind,
       killAt: r.k,
@@ -809,9 +847,26 @@ async function main() {
       keptAt: r.keptAt ?? null,
     })),
   }
-  if (opt.json) writeFileSync(opt.json, JSON.stringify(report, null, 2) + '\n')
+  if (jsonToStdout) process.stdout.write(JSON.stringify(report, null, 2) + '\n')
+  else if (opt.json) writeFileSync(opt.json, JSON.stringify(report, null, 2) + '\n')
   if (opt.md) writeFileSync(opt.md, markdown(report))
   process.exit(failing ? 1 : incomplete ? 2 : 0)
+}
+
+/** One row per action: what the clean run did, the worst a kill point made of it, and in how many trials it repeated or went missing. */
+function summarizeActions(expected, results) {
+  const rows = new Map([...expected].map(([action, t]) => [action, { action, expected: t.applied, worst: t.applied, repeatedIn: 0, lostIn: 0, replayedIn: 0 }]))
+  const row = (action) => rows.get(action) ?? rows.set(action, { action, expected: 0, worst: 0, repeatedIn: 0, lostIn: 0, replayedIn: 0 }).get(action)
+  for (const r of results)
+    for (const i of r.issues) {
+      const a = row(i.action)
+      if (i.kind === 'duplicated') {
+        a.repeatedIn++
+        a.worst = Math.max(a.worst, i.applied)
+      } else if (i.kind === 'lost') a.lostIn++
+      else if (i.kind === 'replayed') a.replayedIn++
+    }
+  return [...rows.values()]
 }
 
 function markdown(r) {
@@ -828,6 +883,10 @@ function markdown(r) {
     `Agent: \`${r.command}\``,
     '',
     `Kill points exercised: ${r.summary.exercised} of ${r.summary.planned}. Trials with a duplicated effect: ${r.summary.duplicated}. With a lost effect: ${r.summary.lost}. Path diverged: ${r.summary.diverged}. Did not finish: ${r.summary.incomplete}.`,
+    '',
+    '| Action | Clean run | Worst | Repeated in | Lost in | Same-key replays in |',
+    '|---|---|---|---|---|---|',
+    ...r.actions.map((a) => `| \`${a.action}\` | ${a.expected}× | ${a.worst}× | ${a.repeatedIn} of ${r.trials.length} | ${a.lostIn} | ${a.replayedIn} |`),
     '',
     '| Kill at call | When | Call | Verdict | What happened |',
     '|---|---|---|---|---|',

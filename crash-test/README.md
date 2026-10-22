@@ -2,30 +2,90 @@
 
 Kill your agent at each tool call, restart it, and see which side effects happened twice.
 
-It works on any agent in any language, with or without Argentic. It runs your command, points your tools at local sinks (HTTP, a Stripe-shaped payments API, SMTP, files, SQLite rows), and kills the process at every effect a sink sees and between a model reply and the tool call that follows it. It only watches what arrives. It never looks inside your agent.
+It works on any agent in any language, with or without Argentic. It runs your command, points your tools at local stand-ins (HTTP, a Stripe-shaped payments API, SMTP, files, SQLite rows), and kills the process at every effect they see and between a model reply and the tool call that follows it. It only watches what arrives. It never looks inside your agent.
 
-Prototype. Node 20 or newer, no dependencies.
+Version 0.1. Node 20 or newer, no dependencies, no keys, no network. It is not on npm yet, so you run it from this repo.
 
-## 60-second demo
+## Quickstart (5 minutes)
 
-You need Node and this repo. No keys, no accounts. In fish or bash:
+You need Node 20+ and git. The examples use a scripted model, so nothing here calls a paid model or needs an account.
+
+### 1. Get it
 
 ```
 git clone https://github.com/Argentic-Labs-AI/argentic-plugins
 cd argentic-plugins/crash-test
-node crash-test.mjs -- node examples/plain-agent.mjs
-node crash-test.mjs -- node examples/keyed-agent.mjs
+node crash-test.mjs --help
 ```
 
-The first agent is a plain loop that refunds an order, emails the customer and closes the ticket. Every kill point duplicates something, and the report says which action landed twice and whether the first copy had been acknowledged. The second agent sends a stable `Idempotency-Key` with each action and writes its progress to a file. It comes out clean.
+### 2. Watch an agent double-send
 
-Then change the receiver and run it again:
+`examples/ai-sdk/naive.mjs` is a small support agent on the Vercel AI SDK. It refunds an order, emails the customer and closes the ticket, with plain tools and nothing else.
 
 ```
-node crash-test.mjs --no-dedupe -- node examples/keyed-agent.mjs
+cd examples/ai-sdk
+npm install
+node ../../crash-test.mjs -- node naive.mjs
 ```
 
-Now the same keyed agent fails, because a receiver that ignores the key sees a second request. The verdict follows the receiver, not the agent.
+The tool runs the agent once to learn what it does (three actions), then runs it six more times and kills it each time at one of those actions, once before the agent hears back and once right after. Each time it restarts the agent and counts what landed. The naive agent starts from the top on every restart, so:
+
+```
+By action
+  Action              Clean run  Worst  Repeated in  Verdict
+  POST /refund_order  1×         2×     6 of 6       REPEATED
+  POST /send_email    1×         2×     4 of 6       REPEATED
+  POST /close_ticket  1×         2×     2 of 6       REPEATED
+```
+
+The customer got refunded twice. The exit code is 1.
+
+### 3. Fix it and run it again
+
+`safe.mjs` is the same agent with one change: each tool sends an `Idempotency-Key` built from the thing it acts on (`refund:1182`, `close:T-77`). Compare the two files to see it.
+
+```
+node ../../crash-test.mjs -- node safe.mjs
+```
+
+Nothing is duplicated, nothing is lost, and the exit code is 0. The report lists "absorbed replays": actions that came again with the same key. They are harmless only if the service on the other end honours the key, as payment APIs do. To see what happens when it does not:
+
+```
+node ../../crash-test.mjs --no-dedupe -- node safe.mjs
+```
+
+The same agent now fails at every kill point. The verdict follows the receiver, so check that yours dedupes on the key.
+
+### 4. Run it on your agent
+
+Point your agent's tool endpoints at the address in `$CRASHTEST_SINK_URL` (a tool that posts to `https://api.example.com/refund` posts to `$CRASHTEST_SINK_URL/refund` instead) and put your command after the `--`:
+
+```
+node crash-test.mjs -- node my-agent.js
+node crash-test.mjs --copy-cwd -- python agent.py
+```
+
+Your agent must exit 0 when its work is done, so the tool can tell a finished restart from a broken one. If it keeps state in its working directory, add `--copy-cwd`. Other kinds of effects (email, files, a database, a model API) are in the sections below.
+
+### 5. Use it in CI
+
+The exit code is the verdict, and `--json` gives you the details:
+
+```
+node crash-test.mjs --json report.json -- node my-agent.js
+```
+
+| Exit code | Meaning |
+|---|---|
+| 0 | Every action landed as often as in the clean run. |
+| 1 | An action landed twice or never. |
+| 2 | The setup is wrong, or a trial could not finish (the agent crashed or timed out on restart). |
+
+`--json -` writes the JSON to stdout and the readable report to stderr, so you can pipe it: `crash-test --json - -- node my-agent.js 2>/dev/null | jq .summary`. `--md report.md` writes a Markdown version.
+
+The report has the verdict for each kill point, a table with one row per action (how many times it ran in the clean run, the worst case, in how many trials it repeated), and a summary. When something repeated it ends with one line about Argentic; `--no-promo` removes it.
+
+Two more agents that need no install: `node crash-test.mjs -- node examples/plain-agent.mjs` fails, and `keyed-agent.mjs` passes.
 
 ## Run it on your agent
 
@@ -95,6 +155,8 @@ An LLM agent may make different calls on each run. Three options handle that:
 
 | Agent | What it shows |
 |---|---|
+| `ai-sdk/naive.mjs` | A Vercel AI SDK agent with plain tools. Repeats finished actions after a kill. Needs `npm install` in `examples/ai-sdk`. |
+| `ai-sdk/safe.mjs` | The same agent with an `Idempotency-Key` per action. Clean when the receiver honours the key. To use a real model, replace `scriptedModel()` with your provider's model. |
 | `plain-agent.mjs` | A plain loop with no checkpoints. Every kill point duplicates finished actions. |
 | `checkpoint-agent.mjs` | A progress file, no keys. Still duplicates the cut-off action and the one that landed just before the file write. |
 | `keyed-agent.mjs` | Stable keys and a progress file. Clean when the receiver honours the key. |
@@ -107,7 +169,7 @@ An LLM agent may make different calls on each run. Three options handle that:
 | `lossy-agent.mjs` | Assumes the earlier run finished. Reports lost actions. |
 | `argentic-agent.ts` | The Argentic quickstart agent. Needs `ARGENTIC_API_KEY`, `MODEL_KEY`, and `node --experimental-transform-types`. |
 
-`node test/self-test.mjs` runs nineteen cases (no keys needed; it uses a scripted model) and checks that the verdict follows the agent.
+`npm test` (or `node test/self-test.mjs`) runs thirty-three cases and checks that the verdict follows the agent, the exit codes, and the JSON report. It needs no keys and no network; it uses a scripted model. The AI SDK cases run once you have run `npm install` in `examples/ai-sdk`, and are skipped with a note until then.
 
 ## Limits
 
