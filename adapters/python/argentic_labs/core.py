@@ -52,6 +52,12 @@ class Action(TypedDict, total=False):
 FREE_MODEL: ModelSpec = {"provider": "nvidia", "id": "nvidia/nemotron-3.5-lightning-30b-a3b", "prices": {"in": 0.0, "out": 0.0}}
 
 
+class RetryLater(Exception):
+    """Raise from a tool when the outcome is not known yet and the same call is safe to try again
+    (a network drop, a provider that is down). run_durable does not write it to the ledger: the run
+    stops, and running it again asks for the same action again with the same key."""
+
+
 class ArgenticError(Exception):
     """A request failed in a way retrying will not fix.
 
@@ -500,6 +506,8 @@ def run_durable(
                 else:
                     try:
                         result = _settle(tool.execute(args, ToolContext(seq, lkey)))
+                    except RetryLater:
+                        raise
                     except Exception as e:  # recorded, the agent hears about it
                         result = {"error": str(e)}
                 result = json.loads(json.dumps(result, default=str))

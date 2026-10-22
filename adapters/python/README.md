@@ -10,6 +10,8 @@ The package is the client and `run_durable`, with no dependencies (Python 3.10+)
 
 Nothing in this package runs LangChain's, LangGraph's, Pydantic AI's or the Agents SDK's loop. The TypeScript client, `@argentic-labs/client` on npm, does the same job for the Vercel AI SDK and Mastra, and the two read each other's ledger files.
 
+Retry-safe tools for Stripe, Resend, SMTP, Slack, GitHub and a generic HTTP POST are in `argentic_labs.tools` (`tool_pack`), standard library only. See [TOOLS.md](TOOLS.md).
+
 ## Install
 
 ```

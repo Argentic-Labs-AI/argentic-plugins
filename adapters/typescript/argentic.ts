@@ -302,6 +302,18 @@ export class Ledger {
 // ---------------------------------------------------------------------------
 // runDurable
 
+/**
+ * Throw this from a tool when the outcome is not known yet and the same call is safe to try again:
+ * a network drop, a timeout, a provider that is down. runDurable does not write it to the ledger,
+ * so it stops the run. Run it again and the action is asked for again with the same key.
+ */
+export class RetryLater extends Error {
+  constructor(message: string, readonly cause?: unknown) {
+    super(message)
+    this.name = 'RetryLater'
+  }
+}
+
 export interface ToolContext {
   seq: number
   /** `${agent}:${seq}`. Use it to make the side effect safe to repeat. */
@@ -422,6 +434,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
         try {
           result = await tool.execute(action.args ?? {}, { seq: action.seq, idempotencyKey: ledgerKey })
         } catch (e) {
+          if (e instanceof RetryLater) throw e
           result = { error: e instanceof Error ? e.message : String(e) }
         }
       }
