@@ -40,11 +40,16 @@ const messages = [
   { role: 'user', content: 'Order 1182 (ticket T-77, customer dana@example.com) arrived broken. Refund the $42 order, email the customer that the refund is on its way, then close the ticket. Do one step at a time.' },
 ]
 for (let turn = 0; turn < 8; turn++) {
-  const res = await fetch(`${base}/chat/completions`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.MODEL_KEY ?? 'none'}` },
-    body: JSON.stringify({ model, messages, max_tokens: 1200, tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) }),
-  })
+  let res
+  for (let attempt = 0; attempt < 4; attempt++) {
+    res = await fetch(`${base}/chat/completions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${process.env.MODEL_KEY ?? 'none'}` },
+      body: JSON.stringify({ model, messages, max_tokens: 1200, tools: tools.map((t) => ({ type: 'function', function: { name: t.name, description: t.description, parameters: t.parameters } })) }),
+    })
+    if (res.status !== 429 && res.status < 500) break
+    await new Promise((r) => setTimeout(r, 20000 * (attempt + 1))) // a shared free key rate-limits; wait and ask again
+  }
   if (!res.ok) throw new Error(`model -> ${res.status} ${(await res.text()).slice(0, 200)}`)
   const msg = (await res.json()).choices[0].message
   const calls = msg.tool_calls ?? []
