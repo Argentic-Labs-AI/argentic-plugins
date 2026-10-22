@@ -267,7 +267,7 @@ const case4: CaseFn = async (x) => {
   const a = await x.killAt('stream_charge_part', { stream: true })
   let j = await x.journal()
   x.check('no tool_started for charge in the journal', chargeKey(j) === undefined, summary(j))
-  x.check('the streamed step was not recorded (no model_step for the charge call)', !has(j, 'model_step', (p) => p.key === 'm1') || live(x.mode), summary(j))
+  x.check('the streamed step was not recorded (no model_step for the charge call)', !has(j, 'model_step', (p) => JSON.stringify(p.response?.content ?? []).includes('"toolName":"charge"')), summary(j))
   x.check('charge had not run (no @@CHARGE from the killed child, ledger empty)', a.charges().length === 0 && x.lines().length === 0)
   const b = x.child({ stream: true })
   const rb = await b.finish()
