@@ -175,7 +175,7 @@ export function Console() {
           />
           <span className="max-w-[60ch] text-muted">
             The default model is free on NVIDIA: get a key at{' '}
-            <a className="underline underline-offset-4" href="https://build.nvidia.com" target="_blank" rel="noreferrer">build.nvidia.com ↗</a>. It stays in this tab, travels with each request and is never stored.
+            <a className="underline underline-offset-4" href="https://build.nvidia.com" target="_blank" rel="noreferrer">build.nvidia.com ↗</a>. It stays in this tab and is forwarded to Argentic with each call. This app does not store it, and neither does Argentic.
           </span>
         </label>
       )}

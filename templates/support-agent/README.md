@@ -9,7 +9,7 @@ It is built on the [Vercel AI SDK](https://ai-sdk.dev): the two tools are ordina
 ## What you need
 
 - An Argentic API key (`aek_...`): make one at https://getargentic.com/platform under Keys. It goes in `ARGENTIC_API_KEY`.
-- A model key. The default model is a free NVIDIA one: get a key at https://build.nvidia.com (it starts with `nvapi-`). Paste it into the page. It is sent with each request and never stored. To pay for a shared demo yourself instead, set `MODEL_KEY` and the box disappears.
+- A model key. The default model is a free NVIDIA one: get a key at https://build.nvidia.com (it starts with `nvapi-`). Paste it into the page. It stays in the tab and is forwarded to Argentic with each call; this app does not store it. For `npm run dev` you can put it in `MODEL_KEY` instead. A deployed site ignores `MODEL_KEY` on purpose, so nobody can run your model key up. Don't try to work around that on a public deployment.
 
 ## Run it locally
 
@@ -61,6 +61,10 @@ test/run.test.ts                       kill after the mail left, resume, one ema
 ```
 
 `npm test` runs the offline test against a scripted Argentic API. `npm run typecheck` checks the types.
+
+## Before you put a real tool behind it
+
+The page is public and every visitor can start a run, which spends your Argentic quota. It allows 20 runs per IP address per hour (`RUNS_PER_IP_HOUR`). A real email, refund or payment tool also needs an approval step and an allowlist (who it may email, what it may refund) before you swap it in for the sandbox. A model can be talked into things by whatever is in a ticket.
 
 ## Limits
 
