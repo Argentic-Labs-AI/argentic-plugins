@@ -1,5 +1,6 @@
 // Argentic core: a small client and a durable tool loop. No dependencies, Node 22+.
 // Argentic runs the agent loop; your code carries out the tool calls it asks for.
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
@@ -49,7 +50,12 @@ export function toArgenticSchema(schema: Record<string, any>): Record<string, un
 }
 
 export interface WakeBody {
-  message: string
+  /** Required unless `fire_due` is set; the API refuses both together. */
+  message?: string
+  /** Wake for the plans, schedules and timers that have fallen due instead of with a message. */
+  fire_due?: boolean
+  /** Which memory of the agent to wake. Left out, the agent's default. */
+  memory?: string
   model: ModelSpec
   system?: string
   tools?: ToolDecl[]
@@ -221,6 +227,127 @@ export class Argentic {
       }
       await this.sleep(this.backoffMs[failures++])
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Due notices: verify the signed notice the hosted API posts to your wake_url, then wake the agent.
+
+/** What the notice says. It names the agent and why it is due, never its content. */
+export interface DueNotice {
+  type: 'agent.due'
+  agent: string
+  memory: string | null
+  reasons: string[]
+  /** ISO time the agent became due. */
+  since: string
+}
+
+export type WebhookErrorCode = 'bad_secret' | 'missing_header' | 'bad_timestamp' | 'stale' | 'bad_signature' | 'bad_body'
+
+/** The notice cannot be trusted or read. Nothing was woken. `code` says why. */
+export class WebhookVerificationError extends Error {
+  constructor(message: string, readonly code: WebhookErrorCode) {
+    super(message)
+    this.name = 'WebhookVerificationError'
+  }
+}
+
+/** A Fetch API Request, or the raw body text with its headers. */
+export type DueRequest = Request | { body: string; headers: Record<string, string> | Headers }
+
+export interface VerifyOptions {
+  /** The `whsec_...` secret shown when the wake_url was registered. Defaults to the ARGENTIC_WEBHOOK_SECRET environment variable. */
+  secret?: string
+  /** How far the notice's timestamp may be from now, either way, in seconds. Default 300. */
+  toleranceSeconds?: number
+  /** The current time in milliseconds. For tests. */
+  now?: () => number
+}
+
+export interface DueOptions extends VerifyOptions {
+  /** The client that wakes the agent. Defaults to a new Argentic(), which reads ARGENTIC_API_KEY and MODEL_KEY. */
+  client?: Argentic
+  model?: ModelSpec
+}
+
+/** `v1,<base64 HMAC-SHA256>` over "id.timestamp.body", keyed by the base64-decoded part of the secret after `whsec_`. Standard Webhooks. */
+export function signNotice(secret: string, id: string, timestamp: number | string, body: string): string {
+  return `v1,${createHmac('sha256', secretKey(secret)).update(`${id}.${timestamp}.${body}`).digest('base64')}`
+}
+
+function secretKey(secret: string | undefined): Buffer {
+  const b64 = (secret ?? '').replace(/^whsec_/, '')
+  const key = /^[A-Za-z0-9+/]+={0,2}$/.test(b64) && b64.length % 4 === 0 ? Buffer.from(b64, 'base64') : undefined
+  if (!key?.length) throw new WebhookVerificationError('the webhook secret is missing or not a whsec_ base64 string (set ARGENTIC_WEBHOOK_SECRET)', 'bad_secret')
+  return key
+}
+
+async function readDue(req: DueRequest): Promise<{ body: string; get: (name: string) => string | undefined }> {
+  if (typeof Request !== 'undefined' && req instanceof Request) return { body: await req.text(), get: (n) => req.headers.get(n) ?? undefined }
+  const { body, headers } = req as { body: string; headers: Record<string, string> | Headers }
+  if (headers instanceof Headers) return { body, get: (n) => headers.get(n) ?? undefined }
+  const lower = new Map(Object.entries(headers).map(([k, v]) => [k.toLowerCase(), v]))
+  return { body, get: (n) => lower.get(n) }
+}
+
+/**
+ * Check the signature and the time, then parse the notice. No network. The signature is checked against the body exactly as it arrived,
+ * so pass the raw text, not re-serialized JSON. Use it to queue the notice and wake later; the returned `id` is the key to wake with.
+ */
+export async function verifyDue(req: DueRequest, opts: VerifyOptions = {}): Promise<{ notice: DueNotice; id: string }> {
+  const key = secretKey(opts.secret ?? process.env.ARGENTIC_WEBHOOK_SECRET)
+  const { body, get } = await readDue(req)
+  const id = get('webhook-id')
+  const stamp = get('webhook-timestamp')
+  const sigs = get('webhook-signature')
+  if (!id || !stamp || !sigs) throw new WebhookVerificationError('missing webhook-id, webhook-timestamp or webhook-signature header', 'missing_header')
+  if (!/^\d{1,12}$/.test(stamp)) throw new WebhookVerificationError('webhook-timestamp is not a number of seconds', 'bad_timestamp')
+  const nowS = (opts.now ?? Date.now)() / 1000
+  if (Math.abs(nowS - Number(stamp)) > (opts.toleranceSeconds ?? 300)) throw new WebhookVerificationError('webhook-timestamp is outside the allowed window', 'stale')
+  const expected = createHmac('sha256', key).update(`${id}.${stamp}.${body}`).digest()
+  let ok = false
+  for (const entry of sigs.split(/\s+/)) {
+    const [version, sig] = entry.split(',')
+    if (version !== 'v1' || !sig) continue
+    const given = Buffer.from(sig, 'base64')
+    if (given.length === expected.length && timingSafeEqual(given, expected)) ok = true
+  }
+  if (!ok) throw new WebhookVerificationError('no webhook-signature matches', 'bad_signature')
+  let notice: DueNotice
+  try {
+    notice = JSON.parse(body)
+  } catch {
+    throw new WebhookVerificationError('the notice body is not JSON', 'bad_body')
+  }
+  if (notice?.type !== 'agent.due' || typeof notice.agent !== 'string' || !notice.agent) throw new WebhookVerificationError('not an agent.due notice', 'bad_body')
+  return { notice, id }
+}
+
+/**
+ * Verify a due notice, then wake the agent for what fell due, on your own model key (the notice carries none).
+ * The wake's idempotency key comes from the notice's webhook-id, so a notice delivered again replays the first wake's answer.
+ * Throws WebhookVerificationError before any call is made if the notice is not valid.
+ */
+export async function handleDue(req: DueRequest, opts: DueOptions = {}): Promise<{ notice: DueNotice; wake: WakeResult }> {
+  const { notice, id } = await verifyDue(req, opts)
+  const body: WakeBody = { fire_due: true, model: opts.model ?? freeModel }
+  if (notice.memory != null) body.memory = notice.memory
+  const wake = await (opts.client ?? new Argentic()).wake(notice.agent, body, safeKey(id))
+  return { notice, wake }
+}
+
+/** handleDue as a route handler's answer: 200 woken, 401 not verified, 400 unreadable body, 500 secret not set up, 502 the wake failed (so the notice is sent again). */
+export async function handleDueResponse(req: DueRequest, opts: DueOptions = {}): Promise<Response> {
+  try {
+    const { notice, wake } = await handleDue(req, opts)
+    return Response.json({ agent: notice.agent, wake_id: wake.wake_id, status: wake.status })
+  } catch (e) {
+    if (e instanceof WebhookVerificationError) {
+      const status = e.code === 'bad_body' ? 400 : e.code === 'bad_secret' ? 500 : 401
+      return Response.json({ error: e.code }, { status })
+    }
+    return Response.json({ error: 'wake_failed' }, { status: 502 })
   }
 }
 

@@ -51,6 +51,23 @@ console.log(out.reply)
 
 Keep `agent` and `runId` the same across restarts. A request that takes longer than `timeoutMs` (default 300000, 0 for no limit) counts as a network failure and is retried with the same key. If the ledger file is not valid JSON, `runDurable` warns on stderr, sets the file aside as `<path>.corrupt` and starts empty, so finished actions may run again. `client.replay(agent, wakeId)` re-renders a wake's prompts from the journal and compares them to what the model saw; it calls no model and spends nothing.
 
+## Waking on a schedule (handleDue)
+
+Beta, and off by default on the hosted API. When an agent falls due (a plan's `wake_at`, a schedule, a timer or a hook event), Argentic POSTs a signed notice to the `wake_url` you registered. The notice names the agent and why it is due and carries no agent content and no model key. `handleDue` checks the signature and the time, then wakes the agent with `fire_due` on your own model key.
+
+The secret (`whsec_...`) is shown once, when you register the `wake_url`. Store it like a password, for example as `ARGENTIC_WEBHOOK_SECRET`. The model key stays on your server: set `MODEL_KEY` there, as for any other wake.
+
+```ts
+import { Hono } from 'hono'
+import { handleDueResponse } from '@argentic-labs/client'
+
+const app = new Hono()
+// Reads ARGENTIC_API_KEY, MODEL_KEY and ARGENTIC_WEBHOOK_SECRET from the environment.
+app.post('/argentic/due', (c) => handleDueResponse(c.req.raw))
+```
+
+`handleDueResponse` answers 200 when the agent was woken, 401 if the signature or time is wrong, 400 if the body is not an `agent.due` notice, 500 if the secret is missing or malformed, and 502 if the wake itself failed (the notice is then sent again). It takes a Fetch `Request` or `{ body, headers }` with the raw body text, and works the same in a Next.js route handler. `handleDue(request, { secret, client, model, toleranceSeconds })` returns `{ notice, wake }` and throws `WebhookVerificationError` (with a `code`) before any call is made. `verifyDue(request)` only verifies and parses, so you can queue the notice and wake later. The wake uses the notice's `webhook-id` as its idempotency key, so a notice delivered twice replays the first wake instead of waking twice. Timestamps more than 300 seconds off are refused.
+
 ## What to know
 
 Delivery is at-least-once. An action that was running when the process died, before its result reached the local ledger, runs again on resume. Make your handlers safe to repeat: the AI SDK `toolCallId` your `execute` receives is a stable key (`agent:seq`) to dedupe on.

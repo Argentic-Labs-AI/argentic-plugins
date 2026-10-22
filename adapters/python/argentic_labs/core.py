@@ -7,6 +7,10 @@ that is started again resumes without repeating a finished action.
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
+import hashlib
+import hmac
 import http.client
 import inspect
 import json
@@ -215,17 +219,27 @@ class Argentic:
     def wake(
         self,
         agent: str,
-        message: str,
+        message: str | None = None,
         *,
         model: Mapping[str, Any],
         idempotency_key: str,
         system: str | None = None,
         tools: list[dict[str, Any]] | None = None,
         limits: Mapping[str, Any] | None = None,
+        fire_due: bool = False,
+        memory: str | None = None,
     ) -> WakeResponse:
-        """Wake an agent with a message. Safe to call again with the same key: a queued (409) answer waits and
-        resends, a 5xx or network error retries with backoff, and a reused key with a different body raises."""
-        body: dict[str, Any] = {"message": message, "model": model}
+        """Wake an agent with a message, or with `fire_due=True` and no message for the plans, schedules and timers that
+        have fallen due (the API refuses both together). `memory` picks one of the agent's memories. Safe to call again
+        with the same key: a queued (409) answer waits and resends, a 5xx or network error retries with backoff, and a
+        reused key with a different body raises."""
+        body: dict[str, Any] = {"model": model}
+        if message is not None:
+            body["message"] = message
+        if fire_due:
+            body["fire_due"] = True
+        if memory is not None:
+            body["memory"] = memory
         if system:
             body["system"] = system
         if tools:
@@ -278,6 +292,116 @@ def summarize_replay(result: dict[str, Any]) -> str:
     if unchecked:
         return f"{len(turns)} turns, {len(turns) - unchecked} match, {unchecked} could not be checked"
     return f"{len(turns)} turn{'' if len(turns) == 1 else 's'}, all match"
+
+
+# ---- due notices ----------------------------------------------------------
+
+class WebhookVerificationError(Exception):
+    """The notice cannot be trusted or read. Nothing was woken. `code` is one of bad_secret, missing_header,
+    bad_timestamp, stale, bad_signature or bad_body."""
+
+    def __init__(self, message: str, code: str):
+        super().__init__(message)
+        self.code = code
+
+
+@dataclass
+class DueNotice:
+    """What a due notice says. It names the agent and why it is due, never its content."""
+
+    agent: str
+    memory: str | None
+    reasons: list[str]
+    since: str  # ISO time the agent became due
+    type: str = "agent.due"
+
+
+def _secret_key(secret: str | None) -> bytes:
+    b64 = re.sub(r"^whsec_", "", secret or "")
+    try:
+        if not re.fullmatch(r"[A-Za-z0-9+/]+={0,2}", b64) or len(b64) % 4:
+            raise ValueError(b64)
+        return base64.b64decode(b64, validate=True)
+    except (ValueError, binascii.Error):
+        raise WebhookVerificationError(
+            "the webhook secret is missing or not a whsec_ base64 string (set ARGENTIC_WEBHOOK_SECRET)", "bad_secret"
+        ) from None
+
+
+def sign_notice(secret: str, webhook_id: str, timestamp: int | str, body: bytes | str) -> str:
+    """`v1,<base64 HMAC-SHA256>` over "id.timestamp.body", keyed by the base64-decoded part of the secret after `whsec_`. Standard Webhooks."""
+    raw = body if isinstance(body, bytes) else body.encode()
+    mac = hmac.new(_secret_key(secret), f"{webhook_id}.{timestamp}.".encode() + raw, hashlib.sha256)
+    return "v1," + base64.b64encode(mac.digest()).decode()
+
+
+def verify_due(
+    body: bytes | str,
+    headers: Mapping[str, str],
+    *,
+    secret: str | None = None,
+    tolerance_seconds: float = 300,
+    now: Callable[[], float] = time.time,
+) -> tuple[DueNotice, str]:
+    """Check the signature and the time, then parse the notice. No network. Returns (notice, webhook_id).
+
+    The signature is checked against the body exactly as it arrived, so pass the raw bytes, not re-serialized JSON.
+    `secret` defaults to ARGENTIC_WEBHOOK_SECRET. `tolerance_seconds` is how far the timestamp may be from `now()`, either way.
+    Use it to queue the notice and wake later; the webhook id is the key to wake with."""
+    key = _secret_key(secret if secret is not None else os.environ.get("ARGENTIC_WEBHOOK_SECRET"))
+    raw = body if isinstance(body, bytes) else body.encode()
+    lower = {k.lower(): v for k, v in headers.items()}
+    wid, stamp, sigs = lower.get("webhook-id"), lower.get("webhook-timestamp"), lower.get("webhook-signature")
+    if not wid or not stamp or not sigs:
+        raise WebhookVerificationError("missing webhook-id, webhook-timestamp or webhook-signature header", "missing_header")
+    if not re.fullmatch(r"[0-9]{1,12}", stamp):
+        raise WebhookVerificationError("webhook-timestamp is not a number of seconds", "bad_timestamp")
+    if abs(now() - int(stamp)) > tolerance_seconds:
+        raise WebhookVerificationError("webhook-timestamp is outside the allowed window", "stale")
+    expected = hmac.new(key, f"{wid}.{stamp}.".encode() + raw, hashlib.sha256).digest()
+    ok = False
+    for entry in sigs.split():
+        version, _, sig = entry.partition(",")
+        if version != "v1" or not sig:
+            continue
+        try:
+            given = base64.b64decode(sig, validate=True)
+        except (ValueError, binascii.Error):
+            continue
+        if hmac.compare_digest(given, expected):
+            ok = True
+    if not ok:
+        raise WebhookVerificationError("no webhook-signature matches", "bad_signature")
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        raise WebhookVerificationError("the notice body is not JSON", "bad_body") from None
+    if not isinstance(data, dict) or data.get("type") != "agent.due" or not isinstance(data.get("agent"), str) or not data["agent"]:
+        raise WebhookVerificationError("not an agent.due notice", "bad_body")
+    return DueNotice(agent=data["agent"], memory=data.get("memory"), reasons=list(data.get("reasons") or []),
+                     since=data.get("since") or ""), wid
+
+
+def handle_due(
+    body: bytes | str,
+    headers: Mapping[str, str],
+    *,
+    client: Argentic | None = None,
+    model: Mapping[str, Any] | None = None,
+    secret: str | None = None,
+    tolerance_seconds: float = 300,
+    now: Callable[[], float] = time.time,
+) -> tuple[DueNotice, WakeResponse]:
+    """Verify a due notice, then wake the agent for what fell due, on your own model key (the notice carries none).
+
+    `client` defaults to Argentic(), which reads ARGENTIC_API_KEY and MODEL_KEY; `model` to FREE_MODEL. The wake's idempotency
+    key comes from the notice's webhook-id, so a notice delivered again replays the first wake's answer. Raises
+    WebhookVerificationError before any call is made if the notice is not valid. Returns (notice, wake)."""
+    notice, wid = verify_due(body, headers, secret=secret, tolerance_seconds=tolerance_seconds, now=now)
+    wake = (client or Argentic()).wake(
+        notice.agent, model=model or FREE_MODEL, idempotency_key=_key_part(wid)[:128], fire_due=True, memory=notice.memory,
+    )
+    return notice, wake
 
 
 # ---- durable runs ---------------------------------------------------------
