@@ -82,6 +82,8 @@ Run the same code with the same `runId` after a crash. `durableRun` opens the ru
 
 Limits in this release: one run is one sequential chain of model calls (no `run.child()` yet, so two model calls at once on one run will report a divergence); only tools passed through `run.tools()` and models through `run.model()` are covered; prompts, memory and cost stay as your framework builds them. This is recovery and proof, not exactly-once: a side effect outside a wrapped tool, or a tool that ignores its key, can still repeat. Needs a server with `EXTERNAL_LOOPS` on.
 
+What is sent to Argentic: your model key never is, since your app calls the provider itself. Everything needed to replay a run is: the messages each model step adds, the model's full response, token usage, each tool's arguments hash and its full result (or error), `run.step` results and the final reply. These are stored in the agent's journal on Argentic and appear in its proof bundle. Keep secrets and personal data you don't want stored out of tool results and prompts, or redact them before the tool returns.
+
 ## What to know
 
 Delivery is at-least-once. An action that was running when the process died, before its result reached the local ledger, runs again on resume. Make your handlers safe to repeat: the AI SDK `toolCallId` your `execute` receives is a stable key (`agent:seq`) to dedupe on.
