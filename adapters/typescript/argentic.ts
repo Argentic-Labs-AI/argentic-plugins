@@ -3,7 +3,10 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
-export const defaultBaseUrl = 'https://br-proud-morning-b7usdmsq-engine.compute.c-13.us-east-1.aws.neon.tech'
+export const defaultBaseUrl = 'https://api.getargentic.com'
+
+/** A wake can run a long time, so a try waits five minutes, as Python's client does. */
+export const defaultTimeoutMs = 300_000
 
 export interface ModelSpec {
   provider: string
@@ -60,7 +63,7 @@ export interface Action {
   seq: number
 }
 
-export type WakeStatus = 'done' | 'spend_cap' | 'budget_cap' | 'turn_cap' | 'error' | 'approval_required'
+export type WakeStatus = 'done' | 'spend_cap' | 'budget_cap' | 'turn_cap' | 'time_cap' | 'error' | 'approval_required'
 
 export interface WakeResult {
   status: WakeStatus
@@ -104,17 +107,20 @@ export function hintFor(e: unknown): string | undefined {
   if (e.status === 401) return 'Check ARGENTIC_API_KEY. A key only works on the API it was made for, so if you set ARGENTIC_BASE_URL, make the key in that dashboard.'
   if (code === 'model_key_rejected') return 'Your model provider refused MODEL_KEY. Check it is a key for the provider in the error (a free NVIDIA key starts with nvapi-).'
   if (code === 'bad_model') return 'Your provider does not know this model id. Set ARGENTIC_MODEL_ID to one it serves, or unset it for the free default.'
-  if (e.status === 402) return 'This account has no balance left for wakes. See the Billing page in the dashboard.'
+  if (e.status === 402) return 'This account hit its usage limit. Argentic is free in beta, so there is nothing to buy: email hi@getargentic.com and we will raise it.'
   if (e.status === 429) return 'Too many requests a minute for this key. Wait for the time in the error and run the same command again.'
   if (e.status === undefined || e.status >= 500) return 'The API did not answer. Run the same command again in a minute: it picks up where it stopped.'
   return undefined
 }
 
 export interface ClientOptions {
-  apiKey: string
-  /** Sent as X-Model-Key on wake. */
+  /** Defaults to the ARGENTIC_API_KEY environment variable. */
+  apiKey?: string
+  /** Sent as X-Model-Key on wake. Defaults to the MODEL_KEY environment variable. */
   modelKey?: string
   baseUrl?: string
+  /** How long one request may take before that try counts as a network failure, in milliseconds. Default 300000; 0 means no limit. */
+  timeoutMs?: number
   fetch?: typeof fetch
   /** Waits between retries of a 5xx or network failure. */
   backoffMs?: number[]
@@ -129,14 +135,16 @@ export class Argentic {
   private readonly apiKey: string
   private readonly modelKey?: string
   private readonly baseUrl: string
+  private readonly timeoutMs: number
   private readonly doFetch: typeof fetch
   private readonly backoffMs: number[]
   private readonly maxQueuedWaits: number
   private readonly sleep: (ms: number) => Promise<void>
 
-  constructor(opts: ClientOptions) {
-    this.apiKey = opts.apiKey
-    this.modelKey = opts.modelKey
+  constructor(opts: ClientOptions = {}) {
+    this.apiKey = opts.apiKey ?? process.env.ARGENTIC_API_KEY ?? ''
+    this.modelKey = opts.modelKey || process.env.MODEL_KEY || undefined
+    this.timeoutMs = opts.timeoutMs ?? defaultTimeoutMs
     this.baseUrl = (opts.baseUrl ?? process.env.ARGENTIC_BASE_URL ?? defaultBaseUrl).replace(/\/+$/, '')
     this.doFetch = opts.fetch ?? fetch
     this.backoffMs = opts.backoffMs ?? [1000, 2000, 4000, 8000]
@@ -184,7 +192,12 @@ export class Argentic {
       let res: Response | undefined
       let netError: unknown
       try {
-        res = await this.doFetch(this.baseUrl + path, { method: 'POST', headers, body })
+        res = await this.doFetch(this.baseUrl + path, {
+          method: 'POST',
+          headers,
+          body,
+          ...(this.timeoutMs > 0 ? { signal: AbortSignal.timeout(this.timeoutMs) } : {}),
+        })
       } catch (e) {
         netError = e
       }
@@ -221,14 +234,40 @@ export interface LedgerEntry {
   at: string
 }
 
+/** A wake that stopped at its turn or time limit with actions to run, kept so a restart sends their results instead of asking the wake again. */
+export type StoppedWake = Omit<WakeResult, 'idempotentReplay'>
+
 export class Ledger {
   private entries: Record<string, LedgerEntry> = {}
+  private wakes: Record<string, StoppedWake> = {}
 
-  constructor(readonly path: string) {
+  /**
+   * A missing file starts an empty ledger. A file that cannot be read or parsed is set aside as `<path>.corrupt` and `onCorrupt`
+   * is told, because an empty ledger means finished actions may run again. `onCorrupt` defaults to console.warn.
+   */
+  constructor(readonly path: string, onCorrupt: (message: string) => void = (m) => console.warn(m)) {
+    let text: string
     try {
-      this.entries = JSON.parse(readFileSync(path, 'utf8')).entries ?? {}
-    } catch {
+      text = readFileSync(path, 'utf8')
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') return
+      onCorrupt(`argentic: cannot read the ledger ${path} (${(e as Error).message}); starting empty, so finished actions may run again`)
+      return
+    }
+    try {
+      const saved = JSON.parse(text)
+      if (saved === null || typeof saved !== 'object' || Array.isArray(saved)) throw new Error('not a JSON object')
+      this.entries = saved.entries ?? {}
+      this.wakes = saved.wakes ?? {}
+    } catch (e) {
       this.entries = {}
+      this.wakes = {}
+      let kept = ''
+      try {
+        renameSync(path, `${path}.corrupt`)
+        kept = `, the old file is kept as ${path}.corrupt`
+      } catch {}
+      onCorrupt(`argentic: the ledger ${path} is not valid (${(e as Error).message}); starting empty, so finished actions may run again${kept}`)
     }
   }
 
@@ -236,18 +275,44 @@ export class Ledger {
     return this.entries[key]
   }
 
-  /** Write temp file, then rename, so a crash never leaves half a ledger. */
   set(key: string, entry: LedgerEntry): void {
     this.entries[key] = entry
+    this.save()
+  }
+
+  /** The stopped wake answered for this idempotency key, if one was kept. */
+  getWake(key: string): StoppedWake | undefined {
+    return this.wakes[key]
+  }
+
+  setWake(key: string, wake: StoppedWake): void {
+    this.wakes[key] = wake
+    this.save()
+  }
+
+  /** Write temp file, then rename, so a crash never leaves half a ledger. */
+  private save(): void {
     mkdirSync(dirname(this.path) || '.', { recursive: true })
     const tmp = `${this.path}.${process.pid}.tmp`
-    writeFileSync(tmp, JSON.stringify({ entries: this.entries }, null, 2))
+    writeFileSync(tmp, JSON.stringify(Object.keys(this.wakes).length ? { entries: this.entries, wakes: this.wakes } : { entries: this.entries }, null, 2))
     renameSync(tmp, this.path)
   }
 }
 
 // ---------------------------------------------------------------------------
 // runDurable
+
+/**
+ * Throw this from a tool when the outcome is not known yet and the same call is safe to try again:
+ * a network drop, a timeout, a provider that is down. runDurable does not write it to the ledger,
+ * so it stops the run. Run it again and the action is asked for again with the same key.
+ */
+export class RetryLater extends Error {
+  constructor(message: string, readonly cause?: unknown) {
+    super(message)
+    this.name = 'RetryLater'
+  }
+}
 
 export interface ToolContext {
   seq: number
@@ -278,11 +343,13 @@ export interface RunOptions {
   model?: ModelSpec
   maxSteps?: number
   limits?: WakeBody['limits']
+  /** Called just before each wake is sent, so a caller can say it is waiting on the model (the first answer can take several seconds). */
+  onWakeStart?: (info: { step: number }) => void
   /** Called after each newly executed action is written to the ledger. */
   onAction?: (info: ActionInfo) => void
   /** Called for an action the ledger says already finished, so it is not run again. */
   onSkip?: (info: { tool: string; seq: number }) => void
-  /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key. */
+  /** Called after each wake answers. `replayed` means the API sent back its stored answer for this key, or the ledger kept a stopped one. */
   onWake?: (info: { step: number; wakeId: string; status: WakeStatus; replayed: boolean }) => void
   /** Kill this process hard after the Nth newly executed action (to try a crash). */
   crashAfterActions?: number
@@ -298,6 +365,12 @@ export interface RunResult {
 }
 
 const safeKey = (s: string) => s.replace(/[^A-Za-z0-9\-_.:]/g, '-').slice(0, 128)
+
+/**
+ * A wake stopped by its turn or time limit leaves the agent mid-task. Its actions have not been answered, so the next
+ * wake sends their results and the agent carries on from there with them, instead of the same key resuming it blind.
+ */
+const carriesOn = (s: WakeStatus) => s === 'turn_cap' || s === 'time_cap'
 
 export async function runDurable(opts: RunOptions): Promise<RunResult> {
   const { client, agent, tools } = opts
@@ -323,16 +396,23 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
   for (let step = 0; step < maxSteps; step++) {
     const key = safeKey(`${opts.runId}.${step}`)
     const body: WakeBody = { message, model, tools: decls }
+    opts.onWakeStart?.({ step })
     if (opts.system) body.system = opts.system
     if (opts.limits) body.limits = opts.limits
 
-    const res = await client.wake(agent, body, key)
+    // A stopped wake kept in the ledger is not asked again: its actions get their results under the next key.
+    const kept = ledger.getWake(key)
+    const res: WakeResult = kept ? { ...kept, idempotentReplay: true } : await client.wake(agent, body, key)
+    if (!kept && carriesOn(res.status) && res.actions?.length) {
+      const { idempotentReplay: _, ...answer } = res
+      ledger.setWake(key, answer)
+    }
     steps = step + 1
     wakes.push(res.wake_id)
     reply = res.reply ?? ''
     spentUsd += res.spent_usd ?? 0
     status = res.status
-    log(`step ${step}: wake ${res.wake_id} ${res.status}${res.idempotentReplay ? ' (stored answer replayed)' : ''}`)
+    log(`step ${step}: wake ${res.wake_id} ${res.status}${kept ? ' (stopped answer kept in the ledger)' : res.idempotentReplay ? ' (stored answer replayed)' : ''}`)
     opts.onWake?.({ step, wakeId: res.wake_id, status: res.status, replayed: !!res.idempotentReplay })
 
     const actions = res.actions ?? []
@@ -354,6 +434,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
         try {
           result = await tool.execute(action.args ?? {}, { seq: action.seq, idempotencyKey: ledgerKey })
         } catch (e) {
+          if (e instanceof RetryLater) throw e
           result = { error: e instanceof Error ? e.message : String(e) }
         }
       }
@@ -368,7 +449,7 @@ export async function runDurable(opts: RunOptions): Promise<RunResult> {
       }
     }
 
-    if (actions.length === 0 || res.status !== 'done') break
+    if (actions.length === 0 || !(res.status === 'done' || carriesOn(res.status))) break
     message = 'Results of the tools you asked for:\n' + JSON.stringify(results)
   }
 

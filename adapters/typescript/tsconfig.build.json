@@ -12,5 +12,5 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["argentic.ts", "ai-sdk.ts", "mastra.ts", "cli.ts"]
+  "include": ["argentic.ts", "ai-sdk.ts", "mastra.ts", "tools.ts", "cli.ts"]
 }

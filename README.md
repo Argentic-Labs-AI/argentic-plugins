@@ -51,6 +51,16 @@ Customize, Connectors, Add custom connector, URL `https://getargentic.com/mcp`. 
 
 For the skills: Customize, Plugins, the + next to Personal plugins, Add marketplace, From a repository, `Argentic-Labs-AI/argentic-plugins`.
 
+## Cursor
+
+Once the listing is live, search for Argentic in the Cursor marketplace. Until then, add the MCP by hand in `~/.cursor/mcp.json`:
+
+```
+{"mcpServers": {"argentic": {"url": "https://getargentic.com/mcp"}}}
+```
+
+Cursor opens the sign-in when you enable the server.
+
 ## Codex
 
 ```
@@ -73,7 +83,7 @@ The HTTP API still works on its own: `POST /v1/agents/{agent}/wake` and the othe
 
 ## Bring your own framework
 
-Already have tools written for the Vercel AI SDK, Mastra, LangChain / LangGraph or the OpenAI Agents SDK? Hand the loop to Argentic and keep the tools. [`adapters/`](adapters/) has one small adapter per framework (TypeScript: `npm i @argentic-labs/client`; Python is coming to PyPI as `argentic-labs`, until then copy it from this repo), and [`examples/`](examples/) has a runnable refund agent for each, plus one with no framework at all. Kill it mid-run and it resumes without repeating a finished action.
+Already have tools written for the Vercel AI SDK, Mastra, LangChain / LangGraph, Pydantic AI or the OpenAI Agents SDK? Hand the loop to Argentic and keep the tools. [`adapters/`](adapters/) has one small adapter per framework (TypeScript: `npm i @argentic-labs/client`; Python: `argentic-labs`, coming to PyPI, until then `pip install` it from this repo as [`adapters/python`](adapters/python/README.md) describes), and [`examples/`](examples/) has a runnable refund agent for each, plus one with no framework at all. Kill it mid-run and it resumes without repeating a finished action. Both clients also ship the same demo to try it with nothing to write: `npx @argentic-labs/client demo` or `python -m argentic_labs demo`.
 
 ## Ask your agent to do it
 
@@ -85,6 +95,9 @@ Set up Argentic for me. Read https://getargentic.com/docs/agents and follow it f
 
 - `argentic` skill: how to build on the API without wasting money or claiming features that do not exist.
 - `argentic-setup` skill: connect, and make a first call for a few cents at most.
+- `argentic-quickstart` skill: add Argentic to your own project, with keys in `.env`, and run one small test call.
+- `argentic-status` skill: list your agents and which runs got cut off. Read only.
+- `argentic-fix` skill: find why a run stopped, then resume it or ask you to approve.
 - `argentic` MCP server, signed in with your Argentic account.
   - Account tools: `get_account`, `list_api_keys`, `create_api_key`, `revoke_api_key`, `get_usage`, `set_budget`.
   - Agent tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_approvals`, `argentic_answer_approval`.

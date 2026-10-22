@@ -51,7 +51,7 @@ cd argentic-plugins/examples/ai-sdk
 
    You will see a line like `skip seq 7 refund_order: already done before` (your number may differ), then the email and ticket steps, then a one-line summary. The script also replays each wake and prints the outbox counts: one line per tool.
 
-7. Open https://getargentic.com/platform, go to **Runs**, pick your agent (printed as `refund-demo-xxxxxx`) and open its oldest run (the one that crashed, at the bottom of the list). Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
+7. Open the link the second run prints (`https://getargentic.com/platform/runs/<agent>/<run>/`). It is the run that crashed, in your dashboard. Under **Proof of what ran**, press **Check**: it rebuilds every prompt from the journal and compares it with what the model was sent. **Re-run** does the same for the engine's own decisions. Both are free.
 
 Use `npm start -- --fresh` to start over with a new agent.
 
