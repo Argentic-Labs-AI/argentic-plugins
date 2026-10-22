@@ -5,7 +5,7 @@ Argentic runs agents that keep their memory between calls and record what they d
 This plugin connects your coding agent to Argentic. It does three things and nothing else:
 
 - It adds one MCP server, `https://getargentic.com/mcp`. You sign in with your Argentic account (OAuth) and choose an organization. The plugin never sees your password.
-- It adds two skills. `argentic` explains how to build on the API without wasting money or claiming features that do not exist. `argentic-setup` walks through connecting and making a first call.
+- It adds five skills. `argentic` explains how to build on the API without wasting money or claiming features that do not exist. `argentic-setup` walks through connecting and making a first call. `argentic-quickstart` adds Argentic to your project. `argentic-status` shows your agents and which runs got cut off. `argentic-fix` finds why a run stopped and resumes it with your say-so.
 - It asks, optionally, for a key to your own model provider. If you give one, it is sent as the `X-Model-Key` header on requests to `getargentic.com/mcp`, only so that waking an agent can use your model. Argentic does not store it. Without it, every read and account tool still works.
 
 The plugin runs no local code, installs no packages and has no hooks.

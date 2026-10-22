@@ -95,6 +95,9 @@ Set up Argentic for me. Read https://getargentic.com/docs/agents and follow it f
 
 - `argentic` skill: how to build on the API without wasting money or claiming features that do not exist.
 - `argentic-setup` skill: connect, and make a first call for a few cents at most.
+- `argentic-quickstart` skill: add Argentic to your own project, with keys in `.env`, and run one small test call.
+- `argentic-status` skill: list your agents and which runs got cut off. Read only.
+- `argentic-fix` skill: find why a run stopped, then resume it or ask you to approve.
 - `argentic` MCP server, signed in with your Argentic account.
   - Account tools: `get_account`, `list_api_keys`, `create_api_key`, `revoke_api_key`, `get_usage`, `set_budget`.
   - Agent tools: `argentic_wake`, `argentic_fire_due`, `argentic_resume`, `argentic_wakes`, `argentic_wake_get`, `argentic_journal`, `argentic_replay`, `argentic_memory`, `argentic_due`, `argentic_get_tools`, `argentic_set_tools`, `argentic_approvals`, `argentic_answer_approval`.

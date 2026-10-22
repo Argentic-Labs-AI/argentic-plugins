@@ -18,6 +18,7 @@ One MCP, `argentic`, signed in with the user's Argentic account and an organizat
 | `argentic_wake` | message an agent, get its reply | yes |
 | `argentic_fire_due` | wake an agent on plans that have fallen due | yes, if something is due |
 | `argentic_resume` | finish a wake that was cut off or stopped on a cap | yes |
+| `argentic_agents` | list your agents, with open and cut-off counts (where available) | no |
 | `argentic_wakes`, `argentic_wake_get` | find wakes that never answered, read one wake | no |
 | `argentic_journal` | read everything the agent did, in pages | no |
 | `argentic_replay` | check the journal still reproduces what the model was shown | no |
@@ -25,6 +26,8 @@ One MCP, `argentic`, signed in with the user's Argentic account and an organizat
 | `argentic_due` | list plans whose wake time has passed | no |
 | `argentic_get_tools`, `argentic_set_tools` | read or replace the tools stored for an agent (set needs owner or admin) | no |
 | `argentic_approvals`, `argentic_answer_approval` | spend-cap requests (answering needs owner or admin) | approving lets an agent spend more |
+
+Three more skills: `argentic-quickstart` adds Argentic to a project, `argentic-status` shows what your agents did, `argentic-fix` finds why a run stopped.
 
 Account questions (usage, budget, API keys) use the account tools. Without the MCP, call `POST /v1/agents/{agent}/wake` and the other routes directly with `Authorization: Bearer aek_...` (an API key from `create_api_key` or the dashboard) and, for wakes, `X-Model-Key: <provider key>`.
 
