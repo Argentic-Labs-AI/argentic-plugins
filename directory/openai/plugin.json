@@ -3,7 +3,7 @@
   "name": "argentic",
   "version": "0.3.1",
   "description": "Agents that resume after a crash without repeating finished actions, with a record of every run.",
-  "author": { "name": "Argentic Labs", "url": "https://getargentic.com" },
+  "author": { "name": "Argentic", "url": "https://getargentic.com" },
   "homepage": "https://getargentic.com/docs",
   "license": "MIT",
   "keywords": ["agents", "memory", "mcp", "argentic"],
@@ -13,7 +13,7 @@
       "interface": {
         "displayName": "Argentic",
         "shortDescription": "Durable agents with a record of every run",
-        "developerName": "Argentic Labs",
+        "developerName": "Argentic",
         "category": "Developer Tools",
         "capabilities": ["Read", "Write"],
         "websiteURL": "https://getargentic.com",
