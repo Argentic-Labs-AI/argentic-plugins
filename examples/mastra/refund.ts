@@ -117,7 +117,7 @@ async function main() {
   }
   const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://getargentic.com').replace(/\/+$/, '')
   // the first wake is the run that was cut off: a rerun gets its stored answer back under the same id
-  if (out.wakes[0]) console.log(`\nSee every step, then press Check under Proof of what ran: ${dash}/platform/runs/${agent}/${out.wakes[0]}/`)
+  if (out.wakes[0]) console.log(`\nSee every step, then press Check prompts under Proof of what ran: ${dash}/platform/runs/${agent}/${out.wakes[0]}/`)
   console.log('\noutbox lines per tool (expect 1 each):')
   for (const [name, n] of Object.entries(outboxCounts(outbox))) console.log(`  ${name}: ${n}`)
 }

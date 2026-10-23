@@ -24,7 +24,7 @@ set -x MODEL_KEY nvapi-...
 npx @argentic-labs/client demo
 ```
 
-A small support agent refunds an order, emails the customer and closes the ticket, one action every couple of seconds. Press Ctrl-C while it works, then run the same command again from the same folder. The rerun skips the actions that already finished and does the rest. An action you cut off halfway runs again, which is safe because every action carries a stable key. At the end the demo counts what landed in its outbox (one line per action), checks every wake against the journal, and tells you where the run is in the dashboard. Open the run you killed and press Check under Proof of what ran.
+A small support agent refunds an order, emails the customer and closes the ticket, one action every couple of seconds. Press Ctrl-C while it works, then run the same command again from the same folder. The rerun skips the actions that already finished and does the rest. An action you cut off halfway runs again, which is safe because every action carries a stable key. At the end the demo counts what landed in its outbox (one line per action), checks every wake against the journal, and tells you where the run is in the dashboard. Open the run you killed and press Check prompts under Proof of what ran.
 
 `--fresh` starts a new run. `--kill-after 1` kills it for you if you'd rather not race the keyboard. The source is [`adapters/typescript/cli.ts`](adapters/typescript/cli.ts).
 

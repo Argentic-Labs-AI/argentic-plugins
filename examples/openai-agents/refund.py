@@ -104,7 +104,7 @@ def run(client, workdir, model, fresh=False, crash_after=None, crash=None, log=p
     dash = os.environ.get("ARGENTIC_DASHBOARD_URL", "https://getargentic.com").rstrip("/")
     # the first wake is the run that was cut off: a rerun gets its stored answer back under the same id
     if result.wakes:
-        log(f"See every step, then press Check under Proof of what ran: {dash}/platform/runs/{state['agent']}/{result.wakes[0]}/")
+        log(f"See every step, then press Check prompts under Proof of what ran: {dash}/platform/runs/{state['agent']}/{result.wakes[0]}/")
     counts = outbox_counts(outbox_path)
     log("outbox: " + ", ".join(f"{n} x{c}" for n, c in counts.items()))
     return result, counts
