@@ -10,7 +10,7 @@ readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
-authors = [{ name = "Argentic Labs", email = "hi@getargentic.com" }]
+authors = [{ name = "Argentic", email = "hi@getargentic.com" }]
 keywords = ["agents", "ai-agents", "durable", "resume", "idempotent", "langchain", "langgraph", "openai-agents", "pydantic-ai", "argentic"]
 classifiers = [
   "Development Status :: 4 - Beta",

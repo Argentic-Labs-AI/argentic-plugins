@@ -2,7 +2,7 @@
   "name": "argentic",
   "description": "Argentic for your coding agent: one MCP that signs in with your Argentic account.",
   "owner": {
-    "name": "Argentic Labs",
+    "name": "Argentic",
     "url": "https://getargentic.com"
   },
   "plugins": [

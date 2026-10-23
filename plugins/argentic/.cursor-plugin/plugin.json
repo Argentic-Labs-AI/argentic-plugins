@@ -4,7 +4,7 @@
   "version": "0.3.1",
   "description": "Agents that resume after a crash without repeating finished actions, with a record of every run. One MCP that signs in with your Argentic account.",
   "author": {
-    "name": "Argentic Labs",
+    "name": "Argentic",
     "url": "https://getargentic.com"
   },
   "homepage": "https://getargentic.com/docs",
