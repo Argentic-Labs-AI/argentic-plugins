@@ -1,0 +1,54 @@
+# One time only: the first publish of @argentic-labs/crash-test. npm can only attach a trusted publisher to a package that already
+# exists, so this first release uses a short-lived granular token stored as the NPM_TOKEN secret of the `npm` environment.
+# Run it by hand (Actions, crash-test-first-publish, Run workflow) from main. It refuses if the package already exists.
+# After it succeeds: revoke the token on npmjs.com, add this repo + release.yml as the package's trusted publisher, move crash-test
+# into release.yml, and delete this file.
+name: crash-test-first-publish
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: write
+      id-token: write
+    defaults:
+      run:
+        working-directory: crash-test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Check the package is new
+        id: plan
+        run: |
+          name=$(node -p "require('./package.json').name")
+          v=$(node -p "require('./package.json').version")
+          test "$name" = "@argentic-labs/crash-test" || { echo "unexpected package $name"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' "https://registry.npmjs.org/@argentic-labs%2Fcrash-test")
+          test "$code" = 404 || { echo "registry answered $code, not 404: already published or not reachable; nothing to do"; exit 1; }
+          echo "tag=crash-test-v$v" >> "$GITHUB_OUTPUT"
+      - run: npm test
+      - run: npm pack --dry-run
+      - name: Publish
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Check it is live
+        run: |
+          sleep 10
+          npm view @argentic-labs/crash-test version
+          mkdir "$RUNNER_TEMP/demo" && cd "$RUNNER_TEMP/demo"
+          npx --yes @argentic-labs/crash-test --version
+      - name: Tag the release
+        env:
+          TAG: ${{ steps.plan.outputs.tag }}
+        run: |
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG"
