@@ -160,6 +160,7 @@ An LLM agent may make different calls on each run. Three options handle that:
 - `--samples 5` runs the agent cleanly five times. A duplicate is measured against the most any clean run did, and an action counts as lost only if every clean run did it.
 - `--intent order_id,to` identifies an action by those body fields as well as its route, so "refund order 1182" is the same action however the agent got there. For mail, `--intent subject` tells two messages to the same address apart.
 - The report says where a trial's opening calls first left every clean run. Lost work is not checked in those trials, but duplicates still are.
+- An action that no clean run made, landing once after a restart, is reported as a different route (`~`), not as a repeat. It counts as duplicated only if it lands twice.
 
 ## Examples
 
@@ -180,7 +181,7 @@ An LLM agent may make different calls on each run. Three options handle that:
 | `lossy-agent.mjs` | Assumes the earlier run finished. Reports lost actions. |
 | `argentic-agent.ts` | The Argentic quickstart agent (in the repo, not in the npm package). Needs `ARGENTIC_API_KEY`, `MODEL_KEY`, and `node --experimental-transform-types`. |
 
-`npm test` (or `node test/self-test.mjs`) runs thirty-six cases and checks that the verdict follows the agent, the exit codes, and the JSON report. It needs no keys and no network; it uses a scripted model. The AI SDK cases run once you have run `npm install` in `examples/ai-sdk`, and are skipped with a note until then.
+`npm test` (or `node test/self-test.mjs`) runs thirty-seven cases and checks that the verdict follows the agent, the exit codes, and the JSON report. It needs no keys and no network; it uses a scripted model. The AI SDK cases run once you have run `npm install` in `examples/ai-sdk`, and are skipped with a note until then.
 
 ## Limits
 

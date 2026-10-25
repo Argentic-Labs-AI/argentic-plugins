@@ -32,8 +32,9 @@ const cases = [
   { name: 'SMTP: a stable key on the message passes', cmd: ['node', ex('mail-agent.mjs')], args: ['--intent', 'subject'], env: { SMTP_KEYED: '1' }, exit: 0, text: /duplicated effect: .*0/ },
   { name: 'payments API without an Idempotency-Key duplicates the refund', cmd: ['node', ex('payments-agent.mjs')], exit: 1, text: /\/v1\/refunds landed 2×/ },
   { name: 'payments API with the key passes', cmd: ['node', ex('payments-agent.mjs')], env: { PAY_KEYED: '1' }, exit: 0, text: /duplicated effect: .*0/ },
-  { name: 'a keyed agent that takes other routes passes and reports the divergence', cmd: ['node', ex('wandering-agent.mjs')], args: ['--samples', '4'], env: { WANDER_KEYED: '1' }, exit: 0, text: /duplicated effect: .*0/ },
-  { name: 'an unkeyed agent that takes other routes is still caught', cmd: ['node', ex('wandering-agent.mjs')], args: ['--samples', '4'], exit: 1, text: /landed 2×/ },
+  { name: 'a keyed agent that takes other routes passes and reports the divergence', cmd: ['node', ex('wandering-agent.mjs')], args: ['--samples', '4'], env: { WANDER_KEYED: '1', WANDER_SEQ_FILE: join(scratch, 'wander-keyed.seq') }, exit: 0, text: /duplicated effect: .*0/ },
+  { name: 'an unkeyed agent that takes other routes is still caught', cmd: ['node', ex('wandering-agent.mjs')], args: ['--samples', '4'], env: { WANDER_SEQ_FILE: join(scratch, 'wander-unkeyed.seq') }, exit: 1, text: /landed 2×/ },
+  { name: 'an action no clean run made, landing once after a restart, is a different route and not a repeat', cmd: ['node', join(root, 'test', 'restart-extra-agent.mjs')], exit: 0, text: /POST \/c landed once, but no clean run made it/ },
   { name: 'file sink: a line appended twice is caught', cmd: ['node', ex('file-agent.mjs')], args: ['--intent', 'tool'], exit: 1, text: /FILE outbox.jsonl \[tool=refund_order\] landed 2×/ },
   { name: 'file sink: a stable key in the line passes', cmd: ['node', ex('file-agent.mjs')], args: ['--intent', 'tool'], env: { FILE_KEYED: '1' }, exit: 0, text: /duplicated effect: .*0/ },
   ...(hasSqlite
