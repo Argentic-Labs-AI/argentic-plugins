@@ -8,7 +8,7 @@
     "node": ">=20"
   },
   "bin": {
-    "crash-test": "./crash-test.mjs"
+    "crash-test": "crash-test.mjs"
   },
   "files": [
     "crash-test.mjs",
