@@ -1,6 +1,6 @@
 ---
 name: argentic-fix
-description: Use when an Argentic run stopped or the user asks why ("why did my run stop", "resume it", "approve it", "it hit a cap"). Finds the cause from the wake and journal, proposes a fix, resumes only after the user says yes.
+description: Use when an Argentic run stopped or the user asks why ("why did my run stop", "resume it", "approve it", "it hit a cap"). Finds the cause from the wake and its replay check, proposes a fix, resumes only after the user says yes.
 ---
 
 # Fix a run that stopped
@@ -10,7 +10,7 @@ Resuming a run spends money on the user's model key. Find the cause first, say i
 ## Steps
 
 1. Get the wake. If you do not have the wake id, call `argentic_wakes` with `state: "open"` for the agent. Then call `argentic_wake_get` and read its `status`.
-2. Read the journal. Call `argentic_journal` for that agent with `wake` set to the wake id, and look at the last 20 or so events. The kinds are `trigger`, `turn_started`, `model_reply`, `tool_call` and `tool_result`; pass `kind: "tool_call,tool_result"` to see only the tool steps, and `bodies: true` when you need what a tool returned.
+2. Read what `argentic_wake_get` says about the wake (its state, runs and any reply or error). If you need the individual steps, send the user to the run page in the dashboard (`get_run_links` gives the address); the MCP does not read journals. `argentic_replay` with `wake` set to the wake id checks the run still matches what the model was shown.
 3. State the cause in one sentence, with the evidence. Example: "The run stopped on `spend_cap`: it had spent $0.05 of a $0.05 limit after 6 turns."
 4. Propose the fix from the table below.
 5. Resume only after the user says yes. Use `argentic_resume`. It needs the model key on the connection.

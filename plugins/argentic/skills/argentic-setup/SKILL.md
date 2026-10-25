@@ -26,7 +26,7 @@ Without the MCP, the HTTP API takes an API key (`aek_...`, from the `create_api_
 ## Check it works, cheaply
 
 1. Call `get_account`. It costs nothing and proves the sign-in and organization. `unauthorized` means sign in again via `/mcp`.
-2. Call `argentic_memory` for any agent id. Empty is fine; it proves the agent routes work.
+2. Call `argentic_agents` (where available) or `argentic_wakes` for any agent id. Empty is fine; it proves the agent routes work.
 3. Only then wake: `argentic_wake` with a throwaway agent id like `setup-check`, a short message, the user's model id and prices, and `max_usd` of 0.05. A `model_key_rejected` or `bad_model` answer means the provider refused it and nothing was spent. `model_key_required` means the header is not set.
 
 Tell the user what the call cost (`spent_usd`) and which agent id you used.
