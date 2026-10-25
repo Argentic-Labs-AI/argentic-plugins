@@ -659,11 +659,13 @@ async function trial(spec, expected, expectedMin, plans, n) {
   const got = tally(sinks.arrivals)
   for (const g of new Set([...expected.keys(), ...got.keys()])) {
     const known = expected.get(g)
-    const want = known?.applied ?? (r.diverged ? 1 : 0)
+    // An action no clean run made can land once (the agent took a route the clean runs never did); only a second landing is a repeat.
+    const want = known?.applied ?? 1
     const wantMin = expectedMin.get(g) ?? 0
     const t = got.get(g) ?? { applied: 0, replays: 0, arrivals: 0, firstAcked: null }
     if (t.applied > want) r.issues.push({ kind: 'duplicated', action: g, expected: want, applied: t.applied, replays: t.replays, firstAcked: t.firstAcked })
     else if (t.applied < wantMin && !r.diverged) r.issues.push({ kind: 'lost', action: g, expected: wantMin, applied: t.applied })
+    else if (!known && t.applied) r.issues.push({ kind: 'unseen', action: g, applied: t.applied, replays: t.replays })
     else if (t.replays) r.issues.push({ kind: 'replayed', action: g, expected: want, applied: t.applied, replays: t.replays, firstAcked: t.firstAcked })
   }
   const bad = r.issues.filter((i) => i.kind === 'duplicated' || i.kind === 'lost')
@@ -675,7 +677,7 @@ async function trial(spec, expected, expectedMin, plans, n) {
     const d = bad.some((i) => i.kind === 'duplicated')
     const l = bad.some((i) => i.kind === 'lost')
     r.verdict = d && l ? 'duplicated+lost' : d ? 'duplicated' : 'lost'
-  } else if (r.diverged) {
+  } else if (r.diverged || r.issues.some((i) => i.kind === 'unseen')) {
     r.verdict = 'diverged'
   }
   if (r.diverged) r.note = `path diverged at call ${r.diverged.at}: the clean run made ${r.diverged.clean}, this run made ${r.diverged.saw}`
@@ -782,6 +784,7 @@ async function main() {
     const detail = [
       ...r.issues.filter((i) => i.kind === 'duplicated').map((i) => `${i.action} landed ${i.applied}× (expected ${i.expected})${r.when === 'pause' ? ', the frozen copy landing after the restart had done it' : i.firstAcked ? ', after the first one was acknowledged' : ', after the first one was cut off'}`),
       ...r.issues.filter((i) => i.kind === 'lost').map((i) => `${i.action} never landed`),
+      ...r.issues.filter((i) => i.kind === 'unseen').map((i) => `${i.action} landed once, but no clean run made it (a different route; try --samples 3 or more)`),
       ...r.issues.filter((i) => i.kind === 'replayed').map((i) => `${i.action} came again with the same key (${i.replays}×), absorbed`),
       ...(r.note ? [r.note] : []),
     ]
