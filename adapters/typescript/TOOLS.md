@@ -56,4 +56,4 @@ Nothing here is exactly-once delivery. It narrows the window where a repeat can 
 
 ## Tests
 
-`npm test` runs 22 tests against mock providers that commit an effect and then drop the connection. With `ARGENTIC_ENGINE_DIR` (an agent-lab checkout) and `ENGINE_DATABASE_URL` (an empty Postgres) set, three more run a real hosted engine started under `env -i` with a scripted model: a SIGKILL after two actions, a lost first answer from every provider, and a finished run asked for again. No real keys are used anywhere.
+`npm test` runs 22 tests against mock providers that commit an effect and then drop the connection. No real keys are used anywhere.
