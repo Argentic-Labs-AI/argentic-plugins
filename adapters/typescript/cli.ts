@@ -178,7 +178,7 @@ async function demo(argv: string[]) {
   const dash = (process.env.ARGENTIC_DASHBOARD_URL ?? 'https://getargentic.com').replace(/\/+$/, '')
   out()
   out(`See it in the dashboard: ${dash}/platform/ ${dim('->')} Runs ${dim('->')} ${agent}`)
-  out(dim('Open the oldest run (the one you killed) and press Check under Proof of what ran.'))
+  out(dim('Open the oldest run (the one you killed) and press Check prompts under Proof of what ran.'))
   out(dim('Start over with --fresh.'))
   if (!clean) process.exitCode = 1
 }
