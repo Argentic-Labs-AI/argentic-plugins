@@ -4,7 +4,7 @@ Kill your agent at each tool call, restart it, and see which side effects happen
 
 It works on any agent in any language, with or without Argentic. It runs your command, points your tools at local stand-ins (HTTP, a Stripe-shaped payments API, SMTP, files, SQLite rows), and kills the process at every effect they see and between a model reply and the tool call that follows it. It only watches what arrives. It never looks inside your agent.
 
-Version 0.1. Node 20 or newer on macOS or Linux (Windows through WSL). No dependencies, no keys, no network, no account.
+Version 0.1. Node 22 or newer on macOS or Linux (Windows through WSL). No dependencies, no keys, no network, no account.
 
 ## Quickstart (30 seconds)
 
@@ -25,7 +25,7 @@ Your agent must exit 0 when its work is done, so the tool can tell a finished re
 
 ## Walkthrough (5 minutes)
 
-You need Node 20+ and git. The examples use a scripted model, so nothing here calls a paid model or needs an account.
+You need Node 22+ and git. The examples use a scripted model, so nothing here calls a paid model or needs an account.
 
 ### 1. Get the examples
 
